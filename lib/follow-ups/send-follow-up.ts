@@ -28,6 +28,11 @@ import {
   DEFAULT_SEND_TIMEZONE,
   isWithinBusinessSendWindow,
 } from "@/lib/follow-ups/send-window";
+import {
+  isRetryableError,
+  MAX_SEND_ATTEMPTS,
+  nextRetryDate,
+} from "@/lib/follow-ups/retry";
 import { isEmailSuppressed } from "@/lib/suppressions";
 
 export type SendFollowUpResult =
@@ -118,7 +123,7 @@ export async function sendScheduledFollowUp(
 
   const [claimed] = await db
     .update(scheduledFollowUps)
-    .set({ status: "processing" })
+    .set({ status: "processing", processingStartedAt: new Date() })
     .where(
       and(
         eq(scheduledFollowUps.id, scheduled.id),
@@ -189,6 +194,8 @@ export async function sendScheduledFollowUp(
         sentAt: new Date(),
         lastError: null,
         providerMessageId,
+        processingStartedAt: null,
+        nextRetryAt: null,
       })
       .where(eq(scheduledFollowUps.id, claimed.id));
 
@@ -215,12 +222,19 @@ export async function sendScheduledFollowUp(
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown email error";
+    const attempts = claimed.attemptCount + 1;
+    const retryable = isRetryableError(message);
     await db
       .update(scheduledFollowUps)
       .set({
         status: "failed",
-        attemptCount: claimed.attemptCount + 1,
+        attemptCount: attempts,
         lastError: message,
+        processingStartedAt: null,
+        nextRetryAt:
+          retryable && attempts < MAX_SEND_ATTEMPTS
+            ? nextRetryDate(attempts)
+            : null,
       })
       .where(eq(scheduledFollowUps.id, claimed.id));
     return { ok: false, reason: message };

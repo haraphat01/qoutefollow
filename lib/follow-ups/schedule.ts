@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import {
@@ -70,22 +70,51 @@ export async function scheduleFollowUpsForQuote(quoteId: string) {
     .limit(1);
   const timeZone = org?.sendTimezone ?? DEFAULT_SEND_TIMEZONE;
 
-  await db.insert(scheduledFollowUps).values(
-    steps.map((step) => {
-      const scheduledFor = new Date(approvedAt);
-      scheduledFor.setDate(scheduledFor.getDate() + step.dayOffset);
-      const aligned = alignToBusinessSendWindow(scheduledFor, timeZone);
+  const existing = await db
+    .select()
+    .from(scheduledFollowUps)
+    .where(eq(scheduledFollowUps.quoteId, quote.id));
 
-      return {
-        organizationId: quote.organizationId,
-        quoteId: quote.id,
-        stepId: step.id,
-        scheduledFor: aligned,
-        status: "scheduled" as const,
-        idempotencyKey: `${quote.id}:${step.id}`,
-      };
-    }),
-  );
+  const existingByStepId = new Map(existing.map((row) => [row.stepId, row]));
+  const toInsert: (typeof scheduledFollowUps.$inferInsert)[] = [];
+
+  for (const step of steps) {
+    const scheduledFor = new Date(approvedAt);
+    scheduledFor.setDate(scheduledFor.getDate() + step.dayOffset);
+    const aligned = alignToBusinessSendWindow(scheduledFor, timeZone);
+
+    const prev = existingByStepId.get(step.id);
+    if (prev) {
+      if (prev.status === "sent" || prev.status === "skipped") {
+        continue;
+      }
+
+      await db
+        .update(scheduledFollowUps)
+        .set({
+          scheduledFor: aligned,
+          status: "scheduled",
+          lastError: null,
+          nextRetryAt: null,
+          processingStartedAt: null,
+        })
+        .where(eq(scheduledFollowUps.id, prev.id));
+      continue;
+    }
+
+    toInsert.push({
+      organizationId: quote.organizationId,
+      quoteId: quote.id,
+      stepId: step.id,
+      scheduledFor: aligned,
+      status: "scheduled",
+      idempotencyKey: `${quote.id}:${step.id}`,
+    });
+  }
+
+  if (toInsert.length > 0) {
+    await db.insert(scheduledFollowUps).values(toInsert);
+  }
 }
 
 export async function syncQuoteFollowUpEligibility(

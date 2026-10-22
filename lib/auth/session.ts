@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "crypto";
 import { cookies } from "next/headers";
-import { eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import {
@@ -35,13 +35,30 @@ export type AppSession = {
   role: "owner" | "member";
 };
 
+async function resolveActiveOrganizationId(userId: string) {
+  const [membership] = await db
+    .select({ organizationId: organizationMembers.organizationId })
+    .from(organizationMembers)
+    .where(eq(organizationMembers.userId, userId))
+    .orderBy(asc(organizationMembers.createdAt))
+    .limit(1);
+
+  return membership?.organizationId ?? null;
+}
+
 export async function createSession(userId: string) {
+  const organizationId = await resolveActiveOrganizationId(userId);
+  if (!organizationId) {
+    throw new Error("NO_ORGANIZATION");
+  }
+
   const token = randomBytes(32).toString("hex");
   const tokenHash = hashToken(token);
   const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
 
   await db.insert(sessions).values({
     userId,
+    organizationId,
     tokenHash,
     expiresAt,
   });
@@ -99,7 +116,12 @@ export async function getSession(): Promise<AppSession | null> {
       organizations,
       eq(organizationMembers.organizationId, organizations.id),
     )
-    .where(eq(sessions.tokenHash, tokenHash))
+    .where(
+      and(
+        eq(sessions.tokenHash, tokenHash),
+        eq(sessions.organizationId, organizations.id),
+      ),
+    )
     .limit(1);
 
   if (!row || row.expiresAt < now) {

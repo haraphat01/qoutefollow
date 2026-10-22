@@ -127,6 +127,9 @@ export const sessions = pgTable("sessions", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
   tokenHash: text("token_hash").notNull().unique(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -241,6 +244,9 @@ export const scheduledFollowUps = pgTable("scheduled_follow_ups", {
   attemptCount: integer("attempt_count").notNull().default(0),
   nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
   providerMessageId: text("provider_message_id"),
+  processingStartedAt: timestamp("processing_started_at", {
+    withTimezone: true,
+  }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -1,25 +1,25 @@
 import { and, eq, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import {
-  followUpSteps,
-  organizations,
-  quotes,
-  scheduledFollowUps,
-  customers,
-} from "@/lib/db/schema";
+import { quotes, scheduledFollowUps } from "@/lib/db/schema";
 import { sendScheduledFollowUp } from "@/lib/follow-ups/send-follow-up";
 import {
   isRetryableError,
   MAX_SEND_ATTEMPTS,
-  nextRetryDate,
+  PROCESSING_LOCK_MAX_AGE_MS,
 } from "@/lib/follow-ups/retry";
 
 async function releaseStaleProcessingLocks() {
+  const staleBefore = new Date(Date.now() - PROCESSING_LOCK_MAX_AGE_MS);
   await db
     .update(scheduledFollowUps)
-    .set({ status: "scheduled" })
-    .where(eq(scheduledFollowUps.status, "processing"));
+    .set({ status: "scheduled", processingStartedAt: null })
+    .where(
+      and(
+        eq(scheduledFollowUps.status, "processing"),
+        lte(scheduledFollowUps.processingStartedAt, staleBefore),
+      ),
+    );
 }
 
 export async function processDueFollowUps(limit = 25) {
@@ -86,17 +86,8 @@ export async function processDueFollowUps(limit = 25) {
         .from(scheduledFollowUps)
         .where(eq(scheduledFollowUps.id, row.scheduled.id))
         .limit(1);
-      const attempts = (current?.attemptCount ?? 0) + 1;
+      const attempts = current?.attemptCount ?? 0;
       if (attempts < MAX_SEND_ATTEMPTS) {
-        await db
-          .update(scheduledFollowUps)
-          .set({
-            status: "failed",
-            attemptCount: attempts,
-            nextRetryAt: nextRetryDate(attempts),
-            lastError: message,
-          })
-          .where(eq(scheduledFollowUps.id, row.scheduled.id));
         retried += 1;
       } else {
         failed += 1;

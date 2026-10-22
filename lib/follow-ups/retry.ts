@@ -1,5 +1,8 @@
 export const MAX_SEND_ATTEMPTS = 5;
 
+/** Reclaim rows stuck in `processing` longer than this (e.g. crashed worker). */
+export const PROCESSING_LOCK_MAX_AGE_MS = 15 * 60 * 1000;
+
 export function isRetryableError(message: string) {
   const lower = message.toLowerCase();
   return (

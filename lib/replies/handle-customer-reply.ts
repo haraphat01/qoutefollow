@@ -1,11 +1,13 @@
 import { eq } from "drizzle-orm";
 
 import { classifyCustomerReply } from "@/lib/ai/classify-customer-reply";
+import { parseEmailFromAddress } from "@/lib/email/sending-domain";
 import { formatClassificationLabel } from "@/lib/replies/classification-labels";
 import { db } from "@/lib/db";
 import {
   activityLogs,
   conversations,
+  customers,
   notifications,
   quotes,
 } from "@/lib/db/schema";
@@ -18,14 +20,27 @@ export async function handleCustomerReply(input: {
   subject?: string | null;
   body: string;
 }) {
-  const [quote] = await db
-    .select()
+  const [row] = await db
+    .select({
+      quote: quotes,
+      customerEmail: customers.email,
+    })
     .from(quotes)
+    .innerJoin(customers, eq(quotes.customerId, customers.id))
     .where(eq(quotes.id, input.quoteId))
     .limit(1);
 
-  if (!quote || quote.organizationId !== input.organizationId) {
+  if (!row || row.quote.organizationId !== input.organizationId) {
     return { handled: false as const, reason: "quote_not_found" };
+  }
+
+  const quote = row.quote;
+  const fromAddress =
+    parseEmailFromAddress(input.fromEmail)?.address ??
+    input.fromEmail.toLowerCase().trim();
+
+  if (fromAddress !== row.customerEmail.toLowerCase()) {
+    return { handled: false as const, reason: "sender_mismatch" };
   }
 
   const [conversation] = await db
