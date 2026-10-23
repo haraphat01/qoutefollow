@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { ArrowLeft, CalendarDays, FileText, Mail, UserRound } from "lucide-react";
+import { ArrowLeft, CalendarDays, FileText, Mail, Paperclip, Pencil, UserRound } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 import { QuoteStatusBadge } from "@/components/quote-status-badge";
 import { QuoteEmailAudit } from "@/components/quotes/quote-email-audit";
@@ -29,6 +31,7 @@ import { getNextScheduledFollowUp } from "@/lib/follow-ups/schedule";
 import { listQuoteConversations } from "@/lib/queries/conversations";
 import { listQuoteInternalNotes } from "@/lib/queries/internal-notes";
 import { listOrganizationMembers } from "@/lib/queries/members";
+import { listQuoteDocuments } from "@/lib/queries/documents";
 import { getQuoteDetail } from "@/lib/queries/quotes";
 import { getLatestInboundInsight } from "@/lib/queries/intelligence";
 import { getQuoteEmailAuditLog } from "@/lib/queries/quote-email-audit";
@@ -67,6 +70,7 @@ export default async function QuoteDetailPage({
     sequenceName,
     emailAudit,
     inboundInsight,
+    documents,
   ] = await Promise.all([
     listQuoteConversations(session.organization.id, quote.id),
     listQuoteInternalNotes(session.organization.id, quote.id),
@@ -83,6 +87,7 @@ export default async function QuoteDetailPage({
       : Promise.resolve(null),
     getQuoteEmailAuditLog(session.organization.id, quote.id),
     getLatestInboundInsight(session.organization.id, quote.id),
+    listQuoteDocuments(session.organization.id, quote.id),
   ]);
 
   const mentionHandles = members
@@ -90,7 +95,7 @@ export default async function QuoteDetailPage({
     .join(", ");
   const memberHint = mentionHandles
     ? `Mention teammates: ${mentionHandles}`
-    : "Use @FirstName to mention teammates when they join this workspace.";
+    : "Add teammates under Settings → Team to @mention them.";
 
   const expirationDays = daysUntilExpiration(quote.expiresAt);
   const expirationNote =
@@ -122,7 +127,12 @@ export default async function QuoteDetailPage({
           <h1 className="page-heading">{quote.quoteNumber}</h1>
           <p className="mt-2 text-sm text-muted-foreground">Created {formatDate(quote.quoteDate)}</p>
         </div>
-        <QuoteStatusBadge status={quote.status} />
+        <div className="flex items-center gap-3">
+          <QuoteStatusBadge status={quote.status} />
+          <Button asChild variant="outline" size="sm" className="gap-1.5">
+            <Link href={`/quotes/${quote.id}/edit`}><Pencil className="size-3.5" /> Edit quote</Link>
+          </Button>
+        </div>
       </div>
 
       <ReplyIntelligenceBanner
@@ -163,7 +173,7 @@ export default async function QuoteDetailPage({
                 <p className="mt-1.5 text-sm font-medium">
                   {quote.followUpsEnabled
                     ? `Enabled · ${sequenceName ?? "Default sequence"}`
-                    : "Not enabled"}
+                    : "Turned off for this quote"}
                 </p>
                 {expirationNote ? (
                   <p className="mt-2 text-xs font-medium text-amber-700">
@@ -172,6 +182,20 @@ export default async function QuoteDetailPage({
                 ) : null}
               </div>
             </div>
+            {documents.length > 0 ? (
+              <div className="border-t border-border/70 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Source document</p>
+                <ul className="mt-1.5 space-y-1">
+                  {documents.map((document) => (
+                    <li key={document.id}>
+                      <a href={`/api/documents/${document.id}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                        <Paperclip className="size-3.5" /> {document.fileName}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {quote.notes ? (
               <div className="border-t border-border/70 pt-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Internal notes</p>
@@ -190,7 +214,7 @@ export default async function QuoteDetailPage({
             <CardContent className="space-y-3 pt-2">
               <div className="flex items-center gap-3">
                 <span className="grid size-9 place-items-center rounded-full bg-muted text-primary"><UserRound className="size-4" /></span>
-                <span className="text-sm font-semibold">{customer.name}</span>
+                <Link href={`/customers/${customer.id}`} className="text-sm font-semibold hover:text-primary">{customer.name}</Link>
               </div>
               <a href={`mailto:${customer.email}`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
                 <Mail className="size-4" />{customer.email}

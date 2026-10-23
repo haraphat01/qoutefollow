@@ -13,11 +13,17 @@ import { listCustomers } from "@/lib/queries/customers";
 import { listOrganizationSequences } from "@/lib/queries/sequences";
 import { getSession } from "@/lib/auth/session";
 
-export default async function NewQuotePage() {
+export default async function NewQuotePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ customerId?: string }>;
+}) {
   const session = await getSession();
   if (!session) {
     return null;
   }
+
+  const { customerId } = await searchParams;
 
   const [customers, sequences] = await Promise.all([
     listCustomers(session.organization.id),
@@ -46,6 +52,7 @@ export default async function NewQuotePage() {
         </CardHeader>
         <CardContent className="pt-5">
           <QuoteForm
+            defaultCustomerId={customerId}
             customers={customers.map((customer) => ({
               id: customer.id,
               name: customer.name,

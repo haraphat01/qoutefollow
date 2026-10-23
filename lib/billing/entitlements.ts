@@ -54,6 +54,6 @@ export function resolveEntitlements(billing: BillingSnapshot): Entitlements {
     canUseFollowUps: hasActiveAccess,
     canImportPdf: hasActiveAccess,
     canViewReports: hasActiveAccess,
-    canUseTeamFeatures: false,
+    canUseTeamFeatures: hasActiveAccess,
   };
 }

@@ -2,16 +2,70 @@ import { eq } from "drizzle-orm";
 
 import { classifyCustomerReply } from "@/lib/ai/classify-customer-reply";
 import { parseEmailFromAddress } from "@/lib/email/sending-domain";
-import { formatClassificationLabel } from "@/lib/replies/classification-labels";
 import { db } from "@/lib/db";
 import {
   activityLogs,
   conversations,
   customers,
   notifications,
+  organizations,
   quotes,
 } from "@/lib/db/schema";
 import { cancelScheduledFollowUpsForQuote } from "@/lib/follow-ups/schedule";
+import { inboundReplyDomain } from "@/lib/email/reply-address";
+import { sendTransactionalEmail } from "@/lib/email/resend";
+import { appUrl } from "@/lib/billing/stripe";
+
+/**
+ * With a per-quote Reply-To the customer's reply lands in QuoteFollow, not the
+ * contractor's inbox — forward a copy so they can answer it directly.
+ */
+async function forwardReplyToContractor(input: {
+  organizationId: string;
+  quoteId: string;
+  quoteNumber: string;
+  fromEmail: string;
+  subject: string | null;
+  body: string;
+  summary: string | null;
+}) {
+  if (!inboundReplyDomain()) {
+    return;
+  }
+
+  const [org] = await db
+    .select({ replyEmail: organizations.replyEmail })
+    .from(organizations)
+    .where(eq(organizations.id, input.organizationId))
+    .limit(1);
+
+  if (!org?.replyEmail) {
+    return;
+  }
+
+  const lines = [
+    `${input.fromEmail} replied to your follow-up on ${input.quoteNumber}.`,
+    "Automated follow-ups for this quote are paused.",
+  ];
+  if (input.summary) {
+    lines.push("", `AI summary: ${input.summary}`);
+  }
+  lines.push(
+    "",
+    "— Customer message —",
+    input.body.trim(),
+    "",
+    `Open the quote: ${appUrl(`/quotes/${input.quoteId}`)}`,
+    "Reply to this email to answer the customer directly.",
+  );
+
+  await sendTransactionalEmail({
+    to: org.replyEmail,
+    subject: `Customer reply on ${input.quoteNumber}${input.subject ? `: ${input.subject}` : ""}`,
+    text: lines.join("\n"),
+    replyTo: input.fromEmail,
+  });
+}
 
 export async function handleCustomerReply(input: {
   organizationId: string;
@@ -119,6 +173,18 @@ export async function handleCustomerReply(input: {
     type: "customer_replied",
     title: `Customer replied on ${quote.quoteNumber}`,
     body: `${input.fromEmail} replied.${insightLine}${suggestionLine} Automation is paused until you update the quote.`,
+  });
+
+  await forwardReplyToContractor({
+    organizationId: input.organizationId,
+    quoteNumber: quote.quoteNumber,
+    quoteId: input.quoteId,
+    fromEmail: fromAddress,
+    subject: input.subject ?? null,
+    body: input.body,
+    summary: classificationSummary,
+  }).catch(() => {
+    // The reply is recorded and the contractor is notified in-app either way.
   });
 
   return {

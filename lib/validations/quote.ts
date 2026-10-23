@@ -21,3 +21,15 @@ export const quoteSchema = z.object({
   followUpsEnabled: z.coerce.boolean().optional().default(true),
   sequenceId: z.string().uuid().optional(),
 });
+
+export const quoteStatusSchema = quoteSchema.shape.status;
+
+export const updateQuoteSchema = z.object({
+  quoteId: z.string().uuid(),
+  amount: z.coerce.number().positive("Amount must be greater than zero"),
+  jobDescription: z.string().min(3, "Describe the job"),
+  quoteDate: z.string().min(1, "Quote date is required"),
+  expiresAt: z.string().optional(),
+  notes: z.string().optional(),
+  followUpsEnabled: z.boolean(),
+});

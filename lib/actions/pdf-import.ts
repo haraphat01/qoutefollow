@@ -18,6 +18,8 @@ import { createQuoteFromInput } from "@/lib/quotes/create-quote";
 import { saveOrganizationUpload } from "@/lib/storage/uploads";
 import { confirmImportedQuoteSchema } from "@/lib/validations/quote-import";
 
+import { parseDateInput } from "@/lib/format";
+
 import type { ActionState } from "./auth";
 
 function parseFollowUpsEnabled(value: FormDataEntryValue | null) {
@@ -132,6 +134,7 @@ export async function confirmImportedQuoteAction(
     redirect(`/quotes/${document.quoteId}`);
   }
 
+  let quoteId: string;
   try {
     const quote = await createQuoteFromInput({
       organizationId: session.organization.id,
@@ -140,8 +143,8 @@ export async function confirmImportedQuoteAction(
       customerEmail: data.customerEmail,
       amount: data.amount,
       jobDescription: data.jobDescription,
-      quoteDate: new Date(data.quoteDate),
-      expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+      quoteDate: parseDateInput(data.quoteDate),
+      expiresAt: data.expiresAt ? parseDateInput(data.expiresAt, "end") : null,
       notes: data.notes,
       status: data.status,
       followUpsEnabled: data.followUpsEnabled ?? true,
@@ -149,14 +152,16 @@ export async function confirmImportedQuoteAction(
       quoteNumberOverride: data.estimateNumber,
       documentId: document.id,
     });
-
-    revalidatePath("/quotes");
-    revalidatePath("/dashboard");
-    redirect(`/quotes/${quote.id}`);
+    quoteId = quote.id;
   } catch (error) {
     if (error instanceof Error && error.message === "CUSTOMER_REQUIRED") {
       return { error: "Customer name and email are required." };
     }
     return { error: "Could not save quote. Try again." };
   }
+
+  revalidatePath("/quotes");
+  revalidatePath("/dashboard");
+  revalidatePath("/customers");
+  redirect(`/quotes/${quoteId}`);
 }

@@ -20,3 +20,18 @@ export async function getQuoteDocument(
 
   return document ?? null;
 }
+
+export async function listQuoteDocuments(
+  organizationId: string,
+  quoteId: string,
+) {
+  return db
+    .select({ id: quoteDocuments.id, fileName: quoteDocuments.fileName })
+    .from(quoteDocuments)
+    .where(
+      and(
+        eq(quoteDocuments.organizationId, organizationId),
+        eq(quoteDocuments.quoteId, quoteId),
+      ),
+    );
+}

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { followUpSequences, followUpSteps } from "@/lib/db/schema";
@@ -8,7 +8,12 @@ export async function cloneStepsFromSequence(sourceSequenceId: string) {
   const steps = await db
     .select()
     .from(followUpSteps)
-    .where(eq(followUpSteps.sequenceId, sourceSequenceId))
+    .where(
+      and(
+        eq(followUpSteps.sequenceId, sourceSequenceId),
+        isNull(followUpSteps.archivedAt),
+      ),
+    )
     .orderBy(followUpSteps.sortOrder);
 
   if (steps.length === 0) {
@@ -38,11 +43,30 @@ export async function createOrganizationSequence(
   const [defaultSequence] = await db
     .select({ id: followUpSequences.id })
     .from(followUpSequences)
-    .where(eq(followUpSequences.organizationId, organizationId))
+    .where(
+      and(
+        eq(followUpSequences.organizationId, organizationId),
+        isNull(followUpSequences.archivedAt),
+      ),
+    )
     .limit(1);
 
-  const templateSteps = options?.cloneFromSequenceId
-    ? await cloneStepsFromSequence(options.cloneFromSequenceId)
+  // Only clone from a sequence this organization owns.
+  const [cloneSource] = options?.cloneFromSequenceId
+    ? await db
+        .select({ id: followUpSequences.id })
+        .from(followUpSequences)
+        .where(
+          and(
+            eq(followUpSequences.id, options.cloneFromSequenceId),
+            eq(followUpSequences.organizationId, organizationId),
+          ),
+        )
+        .limit(1)
+    : [];
+
+  const templateSteps = cloneSource
+    ? await cloneStepsFromSequence(cloneSource.id)
     : defaultSequence
       ? await cloneStepsFromSequence(defaultSequence.id)
       : DEFAULT_FOLLOW_UP_STEPS.map((step) => ({ ...step }));

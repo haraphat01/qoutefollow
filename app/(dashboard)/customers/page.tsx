@@ -85,7 +85,7 @@ export default async function CustomersPage() {
                         <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#edf4ed] text-xs font-bold text-[#4c7959]">
                           {customer.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase()}
                         </span>
-                        <span className="font-semibold">{customer.name}</span>
+                        <Link href={`/customers/${customer.id}`} className="font-semibold hover:text-primary">{customer.name}</Link>
                       </div>
                     </TableCell>
                     <TableCell><a className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary" href={`mailto:${customer.email}`}><Mail className="size-3.5" />{customer.email}</a></TableCell>

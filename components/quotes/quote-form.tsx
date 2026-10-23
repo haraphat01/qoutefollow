@@ -21,9 +21,11 @@ const initialState: ActionState = {};
 export function QuoteForm({
   customers,
   sequences,
+  defaultCustomerId,
 }: {
   customers: CustomerOption[];
   sequences: SequenceOption[];
+  defaultCustomerId?: string;
 }) {
   const defaultSequenceId =
     sequences.find((s) => s.isDefault)?.id ?? sequences[0]?.id ?? "";
@@ -45,7 +47,7 @@ export function QuoteForm({
         </div>
         <div className="space-y-2">
           <Label htmlFor="customerId">Select existing customer <span className="font-normal text-muted-foreground">(optional)</span></Label>
-          <select id="customerId" name="customerId" className={selectClassName} defaultValue="">
+          <select id="customerId" name="customerId" className={selectClassName} defaultValue={defaultCustomerId ?? ""}>
             <option value="">Choose a customer…</option>
             {customers.map((customer) => (
               <option key={customer.id} value={customer.id}>
@@ -61,10 +63,16 @@ export function QuoteForm({
           <div className="space-y-2">
             <Label htmlFor="customerName">New customer name</Label>
             <Input id="customerName" name="customerName" autoComplete="name" placeholder="e.g. Jordan Miller" />
+            {state.fieldErrors?.customerName ? (
+              <p className="text-sm text-destructive">{state.fieldErrors.customerName[0]}</p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="customerEmail">New customer email</Label>
             <Input id="customerEmail" name="customerEmail" type="email" autoComplete="email" placeholder="name@example.com" />
+            {state.fieldErrors?.customerEmail ? (
+              <p className="text-sm text-destructive">{state.fieldErrors.customerEmail[0]}</p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -150,7 +158,7 @@ export function QuoteForm({
         />
         <div>
           <Label htmlFor="followUpsEnabled" className="cursor-pointer">Enable quote follow-ups</Label>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Add reminders for Day 2, Day 5, and Day 9. They pause when the quote is closed or cancelled.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Send the emails in the selected sequence. They stop when the quote is closed or cancelled.</p>
         </div>
       </div>
       <Button type="submit" disabled={pending} size="lg" className="h-11 w-full rounded-xl sm:w-auto">

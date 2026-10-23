@@ -6,6 +6,7 @@ import {
   buildFollowUpEmailText,
   renderEmailTemplate,
 } from "@/lib/email/templates";
+import { replyAddressForQuote } from "@/lib/email/reply-address";
 import { createUnsubscribeToken, unsubscribeUrl } from "@/lib/email/unsubscribe";
 import { db } from "@/lib/db";
 import {
@@ -33,6 +34,7 @@ import {
   MAX_SEND_ATTEMPTS,
   nextRetryDate,
 } from "@/lib/follow-ups/retry";
+import { resolveEntitlements } from "@/lib/billing/entitlements";
 import { isEmailSuppressed } from "@/lib/suppressions";
 
 export type SendFollowUpResult =
@@ -113,6 +115,28 @@ export async function sendScheduledFollowUp(
     return { ok: false, reason: "Quote is not eligible for follow-ups." };
   }
 
+  const entitlements = resolveEntitlements({
+    plan: organization.subscriptionPlan,
+    status: organization.subscriptionStatus,
+    trialEndsAt: organization.trialEndsAt,
+  });
+  if (!entitlements.canUseFollowUps) {
+    if (!options?.force) {
+      // Keep the touchpoint queued so it resumes once billing is active again.
+      await db
+        .update(scheduledFollowUps)
+        .set({
+          scheduledFor: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+          lastError: "Paused: no active subscription",
+        })
+        .where(eq(scheduledFollowUps.id, scheduled.id));
+    }
+    return {
+      ok: false,
+      reason: "Follow-ups require an active subscription or trial.",
+    };
+  }
+
   if (await isEmailSuppressed(organization.id, customer.email)) {
     await db
       .update(scheduledFollowUps)
@@ -168,17 +192,17 @@ export async function sendScheduledFollowUp(
     businessName: organization.name,
     replyEmail: organization.replyEmail,
     businessPhone: organization.businessPhone,
-      emailSignature: organization.emailSignature,
-      mailingAddress: organization.mailingAddress,
-      unsubscribeUrl: unsub,
-    });
+    emailSignature: organization.emailSignature,
+    mailingAddress: organization.mailingAddress,
+    unsubscribeUrl: unsub,
+  });
 
   try {
     const providerMessageId = await sendTransactionalEmail({
       to: customer.email,
       subject,
       text,
-      replyTo: organization.replyEmail,
+      replyTo: replyAddressForQuote(quote.id) ?? organization.replyEmail,
       headers: {
         "X-QuoteFollow-Quote-Id": quote.id,
         "X-QuoteFollow-Org-Id": organization.id,

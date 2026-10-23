@@ -6,15 +6,17 @@ import { cancelScheduledFollowUpsForQuote } from "@/lib/follow-ups/schedule";
 import { verifyUnsubscribeToken } from "@/lib/email/unsubscribe";
 import { suppressEmail } from "@/lib/suppressions";
 
-export async function GET(request: Request) {
-  const token = new URL(request.url).searchParams.get("token");
+async function unsubscribe(token: string | null) {
   if (!token) {
-    return htmlResponse("Missing unsubscribe token.", 400);
+    return { ok: false as const, message: "Missing unsubscribe token." };
   }
 
   const payload = verifyUnsubscribeToken(token);
   if (!payload) {
-    return htmlResponse("This unsubscribe link is invalid or expired.", 400);
+    return {
+      ok: false as const,
+      message: "This unsubscribe link is invalid or expired.",
+    };
   }
 
   await suppressEmail({
@@ -38,10 +40,31 @@ export async function GET(request: Request) {
     await cancelScheduledFollowUpsForQuote(quote.id);
   }
 
+  return { ok: true as const };
+}
+
+export async function GET(request: Request) {
+  const result = await unsubscribe(
+    new URL(request.url).searchParams.get("token"),
+  );
+  if (!result.ok) {
+    return htmlResponse(result.message, 400);
+  }
   return htmlResponse(
     "You have been unsubscribed from automated follow-up emails for this contractor.",
     200,
   );
+}
+
+/** RFC 8058 one-click unsubscribe (List-Unsubscribe-Post) from mail clients. */
+export async function POST(request: Request) {
+  const result = await unsubscribe(
+    new URL(request.url).searchParams.get("token"),
+  );
+  if (!result.ok) {
+    return Response.json({ ok: false, error: result.message }, { status: 400 });
+  }
+  return Response.json({ ok: true });
 }
 
 function htmlResponse(message: string, status: number) {

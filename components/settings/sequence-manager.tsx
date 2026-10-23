@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
 
 import {
   createSequenceAction,
+  deleteSequenceAction,
   setDefaultSequenceAction,
 } from "@/lib/actions/sequences";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +26,7 @@ export function SequenceManager({
   activeSequenceId: string;
 }) {
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   return (
     <div className="space-y-4">
@@ -47,24 +50,50 @@ export function SequenceManager({
               ) : null}
             </div>
             {!sequence.isDefault ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={pending}
-                onClick={() => {
-                  startTransition(async () => {
-                    const result = await setDefaultSequenceAction(sequence.id);
-                    if (result.error) {
-                      toast.error(result.error);
-                      return;
-                    }
-                    toast.success(`${sequence.name} is now the default.`);
-                  });
-                }}
-              >
-                Set as default
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => {
+                    startTransition(async () => {
+                      const result = await setDefaultSequenceAction(sequence.id);
+                      if (result.error) {
+                        toast.error(result.error);
+                        return;
+                      }
+                      toast.success(`${sequence.name} is now the default.`);
+                    });
+                  }}
+                >
+                  Set as default
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="text-muted-foreground hover:text-destructive"
+                  disabled={pending}
+                  onClick={() => {
+                    startTransition(async () => {
+                      const result = await deleteSequenceAction(sequence.id);
+                      if (result.error) {
+                        toast.error(result.error);
+                        return;
+                      }
+                      toast.success(
+                        `${sequence.name} deleted. Its quotes now use the default sequence.`,
+                      );
+                      if (sequence.id === activeSequenceId) {
+                        router.push("/settings/sequences");
+                      }
+                    });
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
             ) : null}
           </li>
         ))}
@@ -74,7 +103,8 @@ export function SequenceManager({
         className="flex flex-wrap gap-2"
         onSubmit={(event) => {
           event.preventDefault();
-          const formData = new FormData(event.currentTarget);
+          const form = event.currentTarget;
+          const formData = new FormData(form);
           formData.set("cloneFromSequenceId", activeSequenceId);
           startTransition(async () => {
             const result = await createSequenceAction({}, formData);
@@ -82,8 +112,11 @@ export function SequenceManager({
               toast.error(result.error);
               return;
             }
-            toast.success("Sequence created.");
-            event.currentTarget.reset();
+            toast.success("Sequence created from the one you were viewing.");
+            form.reset();
+            if (result.sequenceId) {
+              router.push(`/settings/sequences?sequence=${result.sequenceId}`);
+            }
           });
         }}
       >

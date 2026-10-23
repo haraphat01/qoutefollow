@@ -1,16 +1,32 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { emailEvents, quotes } from "@/lib/db/schema";
+import { customers, emailEvents, quotes } from "@/lib/db/schema";
+import { quoteIdFromReplyAddresses } from "@/lib/email/reply-address";
+import { parseEmailFromAddress } from "@/lib/email/sending-domain";
 
 export async function resolveQuoteFromInboundEmail(input: {
+  fromEmail?: string | null;
   inReplyTo?: string | null;
   references?: string | null;
   toAddresses?: string[];
   subject?: string | null;
 }) {
-  const candidateIds = new Set<string>();
+  // 1. Per-quote reply address (reply+<quoteId>@INBOUND_REPLY_DOMAIN).
+  const taggedQuoteId = quoteIdFromReplyAddresses(input.toAddresses ?? []);
+  if (taggedQuoteId) {
+    const [quote] = await db
+      .select({ quoteId: quotes.id, organizationId: quotes.organizationId })
+      .from(quotes)
+      .where(eq(quotes.id, taggedQuoteId))
+      .limit(1);
+    if (quote) {
+      return quote;
+    }
+  }
 
+  // 2. Threading headers that reference a provider message id we sent.
+  const candidateIds = new Set<string>();
   for (const header of [input.inReplyTo, input.references]) {
     if (!header) {
       continue;
@@ -32,28 +48,52 @@ export async function resolveQuoteFromInboundEmail(input: {
       .limit(1);
 
     if (event?.quoteId) {
-      return event;
+      return { quoteId: event.quoteId, organizationId: event.organizationId };
     }
+  }
+
+  // 3. Quote number in the subject — quote numbers are only unique per
+  // organization, so the sender must match that quote's customer.
+  const fromAddress = parseEmailFromAddress(input.fromEmail ?? undefined)?.address;
+  if (!fromAddress) {
+    return null;
   }
 
   const quoteTag = input.subject?.match(/QF-\d{4,}/i)?.[0];
   if (quoteTag) {
     const [quote] = await db
-      .select({
-        quoteId: quotes.id,
-        organizationId: quotes.organizationId,
-      })
+      .select({ quoteId: quotes.id, organizationId: quotes.organizationId })
       .from(quotes)
-      .where(eq(quotes.quoteNumber, quoteTag.toUpperCase()))
+      .innerJoin(customers, eq(quotes.customerId, customers.id))
+      .where(
+        and(
+          eq(quotes.quoteNumber, quoteTag.toUpperCase()),
+          eq(sql`lower(${customers.email})`, fromAddress),
+        ),
+      )
       .orderBy(desc(quotes.createdAt))
       .limit(1);
 
     if (quote) {
-      return {
-        quoteId: quote.quoteId,
-        organizationId: quote.organizationId,
-      };
+      return quote;
     }
+  }
+
+  // 4. Sender has exactly one quote with active automation.
+  const openQuotes = await db
+    .select({ quoteId: quotes.id, organizationId: quotes.organizationId })
+    .from(quotes)
+    .innerJoin(customers, eq(quotes.customerId, customers.id))
+    .where(
+      and(
+        eq(sql`lower(${customers.email})`, fromAddress),
+        inArray(quotes.status, ["pending"]),
+      ),
+    )
+    .limit(2);
+
+  if (openQuotes.length === 1) {
+    return openQuotes[0];
   }
 
   return null;

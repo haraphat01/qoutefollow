@@ -27,7 +27,7 @@ export function buildFollowUpEmailText(input: {
   sections.push("", `—`, input.businessName);
 
   if (input.replyEmail?.trim()) {
-    sections.push(`Reply to this email: ${input.replyEmail.trim()}`);
+    sections.push(`Email us: ${input.replyEmail.trim()}`);
   }
 
   if (input.businessPhone?.trim()) {

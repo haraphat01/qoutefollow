@@ -10,15 +10,28 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 export function EmailSettingsForm({
+  isOwner,
+  businessName,
   businessPhone,
   emailSignature,
   replyEmail,
 }: {
+  isOwner: boolean;
+  businessName: string;
   businessPhone: string | null;
   emailSignature: string | null;
   replyEmail: string | null;
 }) {
   const [pending, startTransition] = useTransition();
+
+  if (!isOwner) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Only the account owner can change the business name, reply-to email,
+        phone, and signature used in follow-ups.
+      </p>
+    );
+  }
 
   return (
     <form
@@ -35,20 +48,39 @@ export function EmailSettingsForm({
             toast.error(result.error);
             return;
           }
+          if (result.fieldErrors) {
+            const first = Object.values(result.fieldErrors).flat()[0];
+            toast.error(first ?? "Check the fields and try again.");
+            return;
+          }
           toast.success("Email settings saved.");
         });
       }}
     >
       <div className="space-y-2">
-        <Label htmlFor="replyEmailDisplay">Reply-to email</Label>
+        <Label htmlFor="businessName">Business name</Label>
         <Input
-          id="replyEmailDisplay"
-          value={replyEmail ?? ""}
-          disabled
-          className="bg-muted"
+          id="businessName"
+          name="businessName"
+          required
+          defaultValue={businessName}
         />
         <p className="text-xs text-muted-foreground">
-          Set from your account email at registration. Contact support to change.
+          Available as {"{{business_name}}"} and shown in every email footer.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="replyEmail">Reply-to email</Label>
+        <Input
+          id="replyEmail"
+          name="replyEmail"
+          type="email"
+          required
+          defaultValue={replyEmail ?? ""}
+        />
+        <p className="text-xs text-muted-foreground">
+          Where customer replies (or forwarded replies) reach your team.
+          Available as {"{{reply_email}}"}.
         </p>
       </div>
       <div className="space-y-2">

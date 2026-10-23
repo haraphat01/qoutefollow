@@ -1,9 +1,13 @@
 import { eq } from "drizzle-orm";
 
-import { extractQuoteFieldsFromText } from "@/lib/ai/extract-quote-fields";
+import {
+  extractQuoteFieldsFromText,
+  type ExtractedQuoteFields,
+} from "@/lib/ai/extract-quote-fields";
 import { db } from "@/lib/db";
-import { quoteDocuments } from "@/lib/db/schema";
+import { organizations, quoteDocuments } from "@/lib/db/schema";
 import { extractTextFromPdf, needsOcrFallback } from "@/lib/pdf/extract-text";
+import { extractQuoteFieldsHeuristically } from "@/lib/pdf/heuristic-fields";
 import { extractTextFromPdfWithOpenAi } from "@/lib/pdf/ocr-openai";
 import { readOrganizationUpload } from "@/lib/storage/uploads";
 
@@ -30,7 +34,24 @@ export async function processQuoteDocument(documentId: string) {
       extractedText = await extractTextFromPdfWithOpenAi(buffer, document.fileName);
     }
 
-    const fields = await extractQuoteFieldsFromText(extractedText);
+    let fields: ExtractedQuoteFields;
+    try {
+      fields = await extractQuoteFieldsFromText(extractedText);
+    } catch (aiError) {
+      if (!extractedText.trim()) {
+        throw aiError;
+      }
+      // AI is optional for text PDFs: fall back to pattern matching.
+      const [org] = await db
+        .select({ replyEmail: organizations.replyEmail })
+        .from(organizations)
+        .where(eq(organizations.id, document.organizationId))
+        .limit(1);
+      fields = extractQuoteFieldsHeuristically(extractedText, {
+        excludeEmails: org?.replyEmail ? [org.replyEmail] : [],
+      });
+      extractionMethod = `${extractionMethod}+patterns`;
+    }
 
     await db
       .update(quoteDocuments)

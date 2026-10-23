@@ -35,3 +35,30 @@ export async function sendTransactionalEmail(input: {
 
   return result.data?.id ?? null;
 }
+
+/** Inbound webhooks only carry metadata; fetch the body and headers separately. */
+export async function getReceivedEmail(emailId: string) {
+  const resend = getResend();
+  const result = await resend.emails.receiving.get(emailId);
+  if (result.error) {
+    throw new Error(result.error.message);
+  }
+  return result.data;
+}
+
+export function htmlToPlainText(html: string) {
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li|tr|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}

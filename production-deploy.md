@@ -169,6 +169,14 @@ Each quote detail page includes an **Email audit trail** (sent, delivered, bounc
 
 1. Endpoint: `https://app.yourdomain.com/api/webhooks/resend`
 2. Events: `email.delivered`, `email.bounced`, `email.complained`, `email.received` (inbound needs Resend Inbound on your domain).
+
+### Reply detection (inbound)
+
+1. In Resend, enable **Inbound** on a dedicated domain or subdomain (e.g. `reply.yourdomain.com`) and add the MX record it gives you.
+2. Set `INBOUND_REPLY_DOMAIN=reply.yourdomain.com`.
+3. Follow-ups then use `Reply-To: reply+<quoteId>@reply.yourdomain.com`. When a customer replies, the quote is paused, the reply shows on the quote, and a copy is forwarded to the organization's reply-to email.
+
+Without `INBOUND_REPLY_DOMAIN`, replies go straight to the organization's reply-to email and QuoteFollow cannot pause automation automatically.
 3. Signing secret → `RESEND_WEBHOOK_SECRET`.
 
 ---

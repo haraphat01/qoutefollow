@@ -79,7 +79,7 @@ export async function getOrganizationIntelligence(organizationId: string) {
 
   const acceptedQuotes = orgQuotes.filter((q) => q.status === "accepted");
   let acceptedWithTwoPlus = 0;
-  let acceptedTotal = acceptedQuotes.length;
+  const acceptedTotal = acceptedQuotes.length;
 
   for (const quote of acceptedQuotes) {
     const [counts] = await db

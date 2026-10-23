@@ -126,7 +126,7 @@ export function ImportConfirmForm({
         />
         <span>
           <span className="block text-sm font-semibold">Enable quote follow-ups</span>
-          <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Queue touchpoints for Day 2, Day 5, and Day 9 after saving.</span>
+          <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">Queue the default sequence’s emails after saving.</span>
         </span>
       </label>
 

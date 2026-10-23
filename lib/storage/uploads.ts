@@ -67,7 +67,7 @@ export async function readOrganizationUpload(
 
   const absolutePath = path.isAbsolute(storagePath)
     ? storagePath
-    : path.join(process.cwd(), storagePath);
+    : path.join(/*turbopackIgnore: true*/ process.cwd(), storagePath);
 
   return readFile(absolutePath);
 }

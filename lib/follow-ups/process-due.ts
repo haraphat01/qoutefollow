@@ -2,6 +2,7 @@ import { and, eq, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { quotes, scheduledFollowUps } from "@/lib/db/schema";
+import { expireOverdueQuotes } from "@/lib/follow-ups/schedule";
 import { sendScheduledFollowUp } from "@/lib/follow-ups/send-follow-up";
 import {
   isRetryableError,
@@ -24,6 +25,7 @@ async function releaseStaleProcessingLocks() {
 
 export async function processDueFollowUps(limit = 25) {
   await releaseStaleProcessingLocks();
+  const expired = await expireOverdueQuotes();
 
   const now = new Date();
   const due = await db
@@ -72,7 +74,9 @@ export async function processDueFollowUps(limit = 25) {
       result.reason.includes("expired") ||
       result.reason.includes("eligible") ||
       result.reason.includes("unsubscribed") ||
-      result.reason.includes("Not yet due");
+      result.reason.includes("not due yet") ||
+      result.reason.includes("business hours") ||
+      result.reason.includes("subscription");
 
     if (softSkip) {
       skipped += 1;
@@ -97,5 +101,5 @@ export async function processDueFollowUps(limit = 25) {
     }
   }
 
-  return { processed: due.length, sent, skipped, failed, retried };
+  return { processed: due.length, sent, skipped, failed, retried, expired };
 }

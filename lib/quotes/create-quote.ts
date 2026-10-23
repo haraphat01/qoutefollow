@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import {
@@ -38,15 +38,31 @@ export async function createQuoteFromInput(input: CreateQuoteInput) {
       throw new Error("CUSTOMER_REQUIRED");
     }
 
-    const [customer] = await db
-      .insert(customers)
-      .values({
-        organizationId: input.organizationId,
-        name: input.customerName,
-        email: input.customerEmail.toLowerCase(),
-      })
-      .returning();
-    customerId = customer.id;
+    const email = input.customerEmail.toLowerCase();
+    const [existingByEmail] = await db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(
+        and(
+          eq(customers.organizationId, input.organizationId),
+          eq(customers.email, email),
+        ),
+      )
+      .limit(1);
+
+    if (existingByEmail) {
+      customerId = existingByEmail.id;
+    } else {
+      const [customer] = await db
+        .insert(customers)
+        .values({
+          organizationId: input.organizationId,
+          name: input.customerName,
+          email,
+        })
+        .returning();
+      customerId = customer.id;
+    }
   } else {
     const existing = await db
       .select({ id: customers.id })
@@ -74,6 +90,7 @@ export async function createQuoteFromInput(input: CreateQuoteInput) {
         and(
           eq(followUpSequences.id, resolvedSequenceId),
           eq(followUpSequences.organizationId, input.organizationId),
+          isNull(followUpSequences.archivedAt),
         ),
       )
       .limit(1);

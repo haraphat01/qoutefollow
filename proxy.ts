@@ -19,7 +19,7 @@ function hasValidSessionCookie(request: NextRequest) {
   return SESSION_TOKEN_PATTERN.test(token);
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = request.cookies.get(SESSION_COOKIE)?.value;
   const hasSession = hasValidSessionCookie(request);

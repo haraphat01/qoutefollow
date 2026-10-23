@@ -1,12 +1,13 @@
 import { Webhook } from "svix";
 
+import { getReceivedEmail, htmlToPlainText } from "@/lib/email/resend";
 import { db } from "@/lib/db";
 import { emailEvents } from "@/lib/db/schema";
 import { cancelScheduledFollowUpsForQuote } from "@/lib/follow-ups/schedule";
 import { handleCustomerReply } from "@/lib/replies/handle-customer-reply";
 import { resolveQuoteFromInboundEmail } from "@/lib/replies/resolve-quote";
 import { suppressEmail } from "@/lib/suppressions";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 type ResendWebhookEvent = {
   type: string;
@@ -31,13 +32,14 @@ export function verifyResendWebhook(
   }
 
   const wh = new Webhook(secret);
-  const verified = wh.verify(payload, {
+  // svix 2.x verify() throws on a bad signature and returns nothing.
+  wh.verify(payload, {
     "svix-id": headers.id,
     "svix-timestamp": headers.timestamp,
     "svix-signature": headers.signature,
   });
 
-  return verified as unknown as ResendWebhookEvent;
+  return JSON.parse(payload) as ResendWebhookEvent;
 }
 
 export async function handleResendWebhookEvent(event: ResendWebhookEvent) {
@@ -109,18 +111,56 @@ export async function handleResendWebhookEvent(event: ResendWebhookEvent) {
   }
 
   if (event.type === "email.received") {
-    const from = (data.from as string | undefined) ?? "";
-    const subject = (data.subject as string | undefined) ?? null;
-    const text =
+    if (providerMessageId) {
+      // Webhooks are retried; never record the same inbound reply twice.
+      const [alreadyHandled] = await db
+        .select({ id: emailEvents.id })
+        .from(emailEvents)
+        .where(
+          and(
+            eq(emailEvents.providerMessageId, providerMessageId),
+            eq(emailEvents.eventType, "received"),
+          ),
+        )
+        .limit(1);
+      if (alreadyHandled) {
+        return { ok: true, handled: false, reason: "duplicate" };
+      }
+    }
+
+    let from = (data.from as string | undefined) ?? "";
+    let subject = (data.subject as string | undefined) ?? null;
+    let text =
       (data.text as string | undefined) ??
-      (data.html as string | undefined) ??
-      "";
-    const headers = (data.headers as Record<string, string> | undefined) ?? {};
+      (data.html ? htmlToPlainText(data.html as string) : "");
+    let headers = (data.headers as Record<string, string> | undefined) ?? {};
+    const toAddresses = [
+      ...((data.to as string[] | undefined) ?? []),
+      ...((data.received_for as string[] | undefined) ?? []),
+    ];
+
+    // Resend's email.received payload has no body; load the full message.
+    if (!text && providerMessageId) {
+      const full = await getReceivedEmail(providerMessageId);
+      if (full) {
+        from = full.from || from;
+        subject = full.subject ?? subject;
+        text = full.text ?? (full.html ? htmlToPlainText(full.html) : "");
+        headers = full.headers ?? headers;
+        toAddresses.push(...(full.to ?? []), ...(full.received_for ?? []));
+      }
+    }
+
+    const headerValue = (name: string) =>
+      Object.entries(headers).find(
+        ([key]) => key.toLowerCase() === name,
+      )?.[1] ?? null;
 
     const resolved = await resolveQuoteFromInboundEmail({
-      inReplyTo: headers["in-reply-to"] ?? headers["In-Reply-To"] ?? null,
-      references: headers.references ?? headers.References ?? null,
-      toAddresses: (data.to as string[] | undefined) ?? [],
+      fromEmail: from,
+      inReplyTo: headerValue("in-reply-to"),
+      references: headerValue("references"),
+      toAddresses,
       subject,
     });
 

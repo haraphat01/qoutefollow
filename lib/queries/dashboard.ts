@@ -44,6 +44,7 @@ export async function getDashboardStats(organizationId: string) {
   const upcoming = await db
     .select({
       id: scheduledFollowUps.id,
+      quoteId: quotes.id,
       scheduledFor: scheduledFollowUps.scheduledFor,
       quoteNumber: quotes.quoteNumber,
       amount: quotes.amount,

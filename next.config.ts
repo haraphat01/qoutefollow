@@ -4,6 +4,10 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["pdf-parse"],
   experimental: {
     agentFeedback: true,
+    serverActions: {
+      // PDF uploads go through a server action; allow 10 MB files plus multipart overhead.
+      bodySizeLimit: "11mb",
+    },
   },
   cacheComponents: true,
   partialPrefetching: true,

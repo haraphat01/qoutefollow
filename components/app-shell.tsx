@@ -13,6 +13,7 @@ import {
   Mail,
   PanelsTopLeft,
   Users,
+  UsersRound,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ const NAV = [
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/settings/sequences", label: "Follow-ups", icon: PanelsTopLeft },
   { href: "/settings/email", label: "Email", icon: Mail },
+  { href: "/settings/team", label: "Team", icon: UsersRound },
   { href: "/settings/billing", label: "Billing", icon: CreditCard },
 ] as const;
 

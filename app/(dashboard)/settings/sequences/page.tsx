@@ -88,7 +88,9 @@ export default async function FollowUpSequencesPage({
             </p>
           ) : (
             <SequenceEditor
+              key={data.sequence.id}
               sequenceId={data.sequence.id}
+              name={data.sequence.name}
               steps={data.steps.map((step) => ({
                 id: step.id,
                 dayOffset: step.dayOffset,
@@ -111,6 +113,8 @@ export default async function FollowUpSequencesPage({
         </CardHeader>
         <CardContent className="pt-0">
           <EmailSettingsForm
+            isOwner={session.role === "owner"}
+            businessName={session.organization.name}
             businessPhone={emailSettings?.businessPhone ?? null}
             emailSignature={emailSettings?.emailSignature ?? null}
             replyEmail={emailSettings?.replyEmail ?? null}

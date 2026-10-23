@@ -41,5 +41,5 @@ export function normalizeSubscriptionPlan(
 }
 
 export function stripePriceIdForPlan(plan: PlanId) {
-  return process.env.STRIPE_PRICE_STARTER;
+  return plan === "starter" ? process.env.STRIPE_PRICE_STARTER : undefined;
 }

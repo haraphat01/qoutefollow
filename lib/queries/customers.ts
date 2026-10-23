@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { customers } from "@/lib/db/schema";
+import { customers, quotes } from "@/lib/db/schema";
 
 export async function listCustomers(organizationId: string) {
   return db
@@ -24,4 +24,20 @@ export async function getCustomer(organizationId: string, customerId: string) {
     .limit(1);
 
   return customer ?? null;
+}
+
+export async function listCustomerQuotes(
+  organizationId: string,
+  customerId: string,
+) {
+  return db
+    .select()
+    .from(quotes)
+    .where(
+      and(
+        eq(quotes.organizationId, organizationId),
+        eq(quotes.customerId, customerId),
+      ),
+    )
+    .orderBy(desc(quotes.quoteDate));
 }

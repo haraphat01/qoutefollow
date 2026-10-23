@@ -11,6 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+function toLocalDateTimeInput(date: Date) {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function QuoteFollowUpControls({
   quoteId,
   nextScheduledAt,
@@ -33,10 +38,14 @@ export function QuoteFollowUpControls({
 
   const defaultSnooze = new Date(nextScheduledAt);
   defaultSnooze.setDate(defaultSnooze.getDate() + 2);
-  const snoozeDefault = snoozeValue || defaultSnooze.toISOString().slice(0, 16);
+  // datetime-local inputs take local wall-clock time, not UTC.
+  const snoozeDefault = snoozeValue || toLocalDateTimeInput(defaultSnooze);
 
   return (
     <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Next email: {new Date(nextScheduledAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+      </p>
       <Button
         type="button"
         className="w-full"

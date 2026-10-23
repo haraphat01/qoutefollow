@@ -1,6 +1,8 @@
 import Link from "next/link";
 
-import { LoginForm } from "@/components/auth/login-form";
+import { Suspense } from "react";
+
+import { LoginForm, LoginFormWithRedirect } from "@/components/auth/login-form";
 import {
   Card,
   CardContent,
@@ -23,7 +25,9 @@ export default function LoginPage() {
         </div>
       </CardHeader>
       <CardContent className="space-y-6 px-7 pb-8 sm:px-9 sm:pb-10">
-        <LoginForm />
+        <Suspense fallback={<LoginForm />}>
+          <LoginFormWithRedirect />
+        </Suspense>
         <p className="text-center text-sm text-muted-foreground">
           New here?{" "}
           <Link href="/register" className="font-semibold text-primary hover:underline">

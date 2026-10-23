@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lt } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import {
@@ -6,6 +6,7 @@ import {
   DEFAULT_SEND_TIMEZONE,
 } from "@/lib/follow-ups/send-window";
 import {
+  followUpSequences,
   followUpSteps,
   organizations,
   quotes,
@@ -58,7 +59,12 @@ export async function scheduleFollowUpsForQuote(quoteId: string) {
   const steps = await db
     .select()
     .from(followUpSteps)
-    .where(eq(followUpSteps.sequenceId, quote.sequenceId))
+    .where(
+      and(
+        eq(followUpSteps.sequenceId, quote.sequenceId),
+        isNull(followUpSteps.archivedAt),
+      ),
+    )
     .orderBy(followUpSteps.sortOrder);
 
   const approvedAt = quote.approvedAt;
@@ -77,18 +83,29 @@ export async function scheduleFollowUpsForQuote(quoteId: string) {
 
   const existingByStepId = new Map(existing.map((row) => [row.stepId, row]));
   const toInsert: (typeof scheduledFollowUps.$inferInsert)[] = [];
+  const now = new Date();
+  // When a quote resumes after a pause, overdue steps would all fire at once.
+  // Shift the remaining steps so the first one goes out now and the original
+  // spacing between steps is kept.
+  let shiftMs = 0;
 
   for (const step of steps) {
+    const prev = existingByStepId.get(step.id);
+    if (prev && (prev.status === "sent" || prev.status === "skipped")) {
+      continue;
+    }
+
     const scheduledFor = new Date(approvedAt);
     scheduledFor.setDate(scheduledFor.getDate() + step.dayOffset);
-    const aligned = alignToBusinessSendWindow(scheduledFor, timeZone);
+    if (shiftMs === 0 && scheduledFor < now) {
+      shiftMs = now.getTime() - scheduledFor.getTime();
+    }
+    const aligned = alignToBusinessSendWindow(
+      new Date(scheduledFor.getTime() + shiftMs),
+      timeZone,
+    );
 
-    const prev = existingByStepId.get(step.id);
     if (prev) {
-      if (prev.status === "sent" || prev.status === "skipped") {
-        continue;
-      }
-
       await db
         .update(scheduledFollowUps)
         .set({
@@ -170,6 +187,22 @@ export async function assignQuoteSequence(
     throw new Error("QUOTE_NOT_FOUND");
   }
 
+  const [sequence] = await db
+    .select({ id: followUpSequences.id })
+    .from(followUpSequences)
+    .where(
+      and(
+        eq(followUpSequences.id, sequenceId),
+        eq(followUpSequences.organizationId, organizationId),
+        isNull(followUpSequences.archivedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!sequence) {
+    throw new Error("SEQUENCE_NOT_FOUND");
+  }
+
   await db
     .update(quotes)
     .set({ sequenceId, updatedAt: new Date() })
@@ -191,4 +224,25 @@ export async function rescheduleOpenQuotesForSequence(sequenceId: string) {
   for (const quote of openQuotes) {
     await scheduleFollowUpsForQuote(quote.id);
   }
+}
+
+/** Mark open quotes past their expiration date as expired and stop their follow-ups. */
+export async function expireOverdueQuotes(now = new Date()) {
+  const expired = await db
+    .update(quotes)
+    .set({ status: "expired", updatedAt: now })
+    .where(
+      and(
+        inArray(quotes.status, ["draft", "pending", "paused"]),
+        isNotNull(quotes.expiresAt),
+        lt(quotes.expiresAt, now),
+      ),
+    )
+    .returning({ id: quotes.id });
+
+  for (const quote of expired) {
+    await cancelScheduledFollowUpsForQuote(quote.id);
+  }
+
+  return expired.length;
 }

@@ -15,3 +15,20 @@ export function formatDate(date: Date | string) {
     year: "numeric",
   }).format(value);
 }
+
+/**
+ * Parse a `<input type="date">` value. Bare dates are UTC midnight, which shows
+ * as the previous day in US timezones, so anchor quote dates at midday UTC and
+ * expirations at the end of the UTC day.
+ */
+export function parseDateInput(value: string, kind: "start" | "end" = "start") {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(`${value}T${kind === "end" ? "23:59:59" : "12:00:00"}Z`);
+  }
+  return new Date(value);
+}
+
+/** Format a Date as a `<input type="date">` value. */
+export function toDateInputValue(date: Date | null | undefined) {
+  return date ? date.toISOString().slice(0, 10) : "";
+}

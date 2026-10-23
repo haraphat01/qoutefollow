@@ -2,6 +2,7 @@
 
 import { randomBytes } from "crypto";
 import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { db } from "@/lib/db";
@@ -19,6 +20,7 @@ import { loginSchema, registerSchema } from "@/lib/validations/auth";
 
 export type ActionState = {
   error?: string;
+  success?: boolean;
   fieldErrors?: Record<string, string[]>;
 };
 
@@ -88,6 +90,14 @@ export async function registerAction(
   redirect("/dashboard");
 }
 
+/** Only allow same-site relative paths so `?next=` can't redirect off-site. */
+function safeNextPath(value: FormDataEntryValue | null) {
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) {
+    return "/dashboard";
+  }
+  return value;
+}
+
 export async function loginAction(
   _prev: ActionState,
   formData: FormData,
@@ -117,5 +127,12 @@ export async function loginAction(
   }
 
   await createSession(user.id);
-  redirect("/dashboard");
+
+  // The form may be submitted before hydration adds the hidden `next` field.
+  let next = formData.get("next");
+  if (!next) {
+    const referer = (await headers()).get("referer");
+    next = referer ? new URL(referer).searchParams.get("next") : null;
+  }
+  redirect(safeNextPath(next));
 }

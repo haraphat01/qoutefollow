@@ -161,6 +161,8 @@ export const followUpSequences = pgTable("follow_up_sequences", {
     .references(() => organizations.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   isDefault: boolean("is_default").notNull().default(false),
+  /** Archived sequences are hidden but kept so past follow-up history survives. */
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -175,6 +177,8 @@ export const followUpSteps = pgTable("follow_up_steps", {
   subject: text("subject").notNull(),
   bodyTemplate: text("body_template").notNull(),
   sortOrder: integer("sort_order").notNull(),
+  /** Removed steps are archived so sent follow-ups keep their step record. */
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
 });
 
 export const quotes = pgTable("quotes", {

@@ -156,8 +156,8 @@ export default async function DashboardPage() {
                         <p className="mt-1 text-xs text-muted-foreground">{formatCurrency(item.amount)} <span className="px-1">·</span> {formatDate(item.scheduledFor)}</p>
                       </div>
                     </div>
-                    <Link href="/quotes" className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
-                      View quotes <ArrowUpRight className="size-3.5" />
+                    <Link href={`/quotes/${item.quoteId}`} className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
+                      View quote <ArrowUpRight className="size-3.5" />
                     </Link>
                   </li>
                 ))}

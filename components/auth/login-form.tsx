@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { loginAction, type ActionState } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
@@ -9,11 +10,12 @@ import { Label } from "@/components/ui/label";
 
 const initialState: ActionState = {};
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, action, pending] = useActionState(loginAction, initialState);
 
   return (
     <form action={action} className="space-y-5">
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       {state.error ? (
         <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {state.error}
@@ -46,4 +48,10 @@ export function LoginForm() {
       </Button>
     </form>
   );
+}
+
+/** Carries the `?next=` path set by the auth proxy through sign-in. */
+export function LoginFormWithRedirect() {
+  const next = useSearchParams().get("next") ?? undefined;
+  return <LoginForm next={next} />;
 }
