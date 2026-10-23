@@ -53,6 +53,24 @@ describe("account emails", () => {
     expect(mention.subject).toBe("Mike mentioned you on QF-0007");
   });
 
+  it("sends a designed HTML version with the button link and escaped content", () => {
+    const url = "https://app.example.com/link?token=abc&x=1";
+    const email = buildVerificationEmail({ name: "<Ana>", url });
+    expect(email.html).toContain("<!doctype html>");
+    expect(email.html).toContain('href="https://app.example.com/link?token=abc&amp;x=1"');
+    expect(email.html).toContain("&lt;Ana&gt;");
+    expect(email.html).not.toContain("<Ana>");
+
+    const reply = buildCustomerReplyAlertEmail({
+      quoteNumber: "QF-1",
+      customerEmail: "pat@example.com",
+      summary: null,
+      excerpt: "<script>alert(1)</script>",
+      url: "u",
+    });
+    expect(reply.html).not.toContain("<script>");
+  });
+
   it("truncates long excerpts", () => {
     expect(excerpt("a".repeat(700), 600)).toHaveLength(601);
   });

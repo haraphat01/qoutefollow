@@ -1,16 +1,58 @@
 import { appUrl } from "@/lib/billing/stripe";
 import { sendTransactionalEmail } from "@/lib/email/resend";
+import {
+  EMAIL_COLORS,
+  button,
+  emailDocument,
+  escapeHtml,
+  fallbackLink,
+  footerText,
+  heading,
+  numberedList,
+  panel,
+  paragraph,
+  smallPrint,
+  textToHtml,
+} from "@/lib/email/layout";
 
-export type AccountEmail = { subject: string; text: string };
+export type AccountEmail = { subject: string; text: string; html: string };
 
 const SIGN_OFF = ["", "— QuoteFollow"];
+
+function brandHeader() {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+  <td style="vertical-align:middle;"><img src="${escapeHtml(appUrl("/icon-192.png"))}" width="36" height="36" alt="" style="display:block;border:0;border-radius:9px;"></td>
+  <td style="vertical-align:middle;padding-left:10px;font-size:17px;font-weight:700;color:${EMAIL_COLORS.brand};letter-spacing:-0.01em;">QuoteFollow</td>
+</tr></table>`;
+}
+
+function brandEmail(input: {
+  subject: string;
+  preheader: string;
+  body: string;
+  /** Why the recipient got this email, shown in the footer. */
+  reason: string;
+}) {
+  return emailDocument({
+    title: input.subject,
+    preheader: input.preheader,
+    header: brandHeader(),
+    body: input.body,
+    footer:
+      footerText(escapeHtml(input.reason)) +
+      footerText(
+        `<a href="${escapeHtml(appUrl("/"))}" style="color:${EMAIL_COLORS.faint};">QuoteFollow</a> · Quote follow-up software for contractors`,
+      ),
+  });
+}
 
 export function buildVerificationEmail(input: {
   name: string;
   url: string;
 }): AccountEmail {
+  const subject = "Confirm your email for QuoteFollow";
   return {
-    subject: "Confirm your email for QuoteFollow",
+    subject,
     text: [
       `Hi ${input.name},`,
       "",
@@ -20,6 +62,17 @@ export function buildVerificationEmail(input: {
       "This link expires in 24 hours. If you didn't create an account, you can ignore this email.",
       ...SIGN_OFF,
     ].join("\n"),
+    html: brandEmail({
+      subject,
+      preheader: "One click to finish setting up your workspace.",
+      reason: "You're receiving this because someone signed up for QuoteFollow with this email address.",
+      body:
+        heading("Confirm your email") +
+        paragraph(`Hi ${escapeHtml(input.name)}, confirm your email address to finish setting up your QuoteFollow workspace.`) +
+        button("Confirm email address", input.url) +
+        smallPrint("This link expires in 24 hours. If you didn't create an account, you can ignore this email.") +
+        fallbackLink(input.url),
+    }),
   };
 }
 
@@ -27,8 +80,9 @@ export function buildPasswordResetEmail(input: {
   name: string;
   url: string;
 }): AccountEmail {
+  const subject = "Reset your QuoteFollow password";
   return {
-    subject: "Reset your QuoteFollow password",
+    subject,
     text: [
       `Hi ${input.name},`,
       "",
@@ -38,6 +92,17 @@ export function buildPasswordResetEmail(input: {
       "This link expires in 1 hour and can only be used once. If you didn't ask for this, you can ignore this email — your password won't change.",
       ...SIGN_OFF,
     ].join("\n"),
+    html: brandEmail({
+      subject,
+      preheader: "Choose a new password. The link works for 1 hour.",
+      reason: "You're receiving this because a password reset was requested for your QuoteFollow account.",
+      body:
+        heading("Reset your password") +
+        paragraph(`Hi ${escapeHtml(input.name)}, we received a request to reset your password. Choose a new one below.`) +
+        button("Choose a new password", input.url) +
+        smallPrint("This link expires in 1 hour and can only be used once. If you didn't ask for this, you can ignore this email — your password won't change.") +
+        fallbackLink(input.url),
+    }),
   };
 }
 
@@ -45,20 +110,40 @@ export function buildWelcomeEmail(input: {
   name: string;
   businessName: string;
 }): AccountEmail {
+  const subject = `Welcome to QuoteFollow, ${input.name}`;
+  const steps = [
+    { label: "Add your mailing address and reply-to email", url: appUrl("/settings/email") },
+    { label: "Review your follow-up sequence", url: appUrl("/settings/sequences") },
+    { label: "Add your first quote or import a PDF estimate", url: appUrl("/quotes/new") },
+  ];
   return {
-    subject: `Welcome to QuoteFollow, ${input.name}`,
+    subject,
     text: [
       `Hi ${input.name},`,
       "",
       `${input.businessName} is ready to go. A few things to do first:`,
       "",
-      `1. Add your mailing address and reply-to email: ${appUrl("/settings/email")}`,
-      `2. Review your follow-up sequence: ${appUrl("/settings/sequences")}`,
-      `3. Add your first quote or import a PDF estimate: ${appUrl("/quotes/new")}`,
+      ...steps.map((step, index) => `${index + 1}. ${step.label}: ${step.url}`),
       "",
       "Follow-ups stop on their own when a quote is accepted, declined, or the customer replies.",
       ...SIGN_OFF,
     ].join("\n"),
+    html: brandEmail({
+      subject,
+      preheader: `${input.businessName} is ready. Three quick steps to your first follow-up.`,
+      reason: "You're receiving this because you created a QuoteFollow workspace.",
+      body:
+        heading(`Welcome, ${input.name}`) +
+        paragraph(`<strong>${escapeHtml(input.businessName)}</strong> is ready to go. A few things to do first:`) +
+        numberedList(
+          steps.map(
+            (step) =>
+              `<a href="${escapeHtml(step.url)}" style="color:${EMAIL_COLORS.text};text-decoration:none;font-weight:600;">${escapeHtml(step.label)} &rarr;</a>`,
+          ),
+        ) +
+        button("Open your workspace", appUrl("/dashboard")) +
+        smallPrint("Follow-ups stop on their own when a quote is accepted, declined, or the customer replies."),
+    }),
   };
 }
 
@@ -68,8 +153,9 @@ export function buildTeamInviteEmail(input: {
   businessName: string;
   url: string;
 }): AccountEmail {
+  const subject = `${input.inviterName} invited you to ${input.businessName} on QuoteFollow`;
   return {
-    subject: `${input.inviterName} invited you to ${input.businessName} on QuoteFollow`,
+    subject,
     text: [
       `Hi ${input.name},`,
       "",
@@ -81,6 +167,17 @@ export function buildTeamInviteEmail(input: {
       "This invite link expires in 7 days.",
       ...SIGN_OFF,
     ].join("\n"),
+    html: brandEmail({
+      subject,
+      preheader: `Join ${input.businessName} on QuoteFollow.`,
+      reason: `You're receiving this because ${input.inviterName} added you to their team on QuoteFollow.`,
+      body:
+        heading(`Join ${input.businessName}`) +
+        paragraph(`Hi ${escapeHtml(input.name)}, <strong>${escapeHtml(input.inviterName)}</strong> added you to the <strong>${escapeHtml(input.businessName)}</strong> workspace on QuoteFollow, where the team tracks quotes and customer follow-ups.`) +
+        button("Set your password and join", input.url) +
+        smallPrint("This invite link expires in 7 days.") +
+        fallbackLink(input.url),
+    }),
   };
 }
 
@@ -91,6 +188,7 @@ export function buildCustomerReplyAlertEmail(input: {
   excerpt: string;
   url: string;
 }): AccountEmail {
+  const subject = `Customer replied on ${input.quoteNumber}`;
   const lines = [
     `${input.customerEmail} replied about ${input.quoteNumber}. Automated follow-ups for this quote are paused until you update it.`,
   ];
@@ -106,8 +204,20 @@ export function buildCustomerReplyAlertEmail(input: {
     ...SIGN_OFF,
   );
   return {
-    subject: `Customer replied on ${input.quoteNumber}`,
+    subject,
     text: lines.join("\n"),
+    html: brandEmail({
+      subject,
+      preheader: input.summary ?? input.excerpt.slice(0, 120),
+      reason: "You're receiving this because you're on the team in this QuoteFollow workspace.",
+      body:
+        heading(`${input.quoteNumber}: the customer replied`) +
+        paragraph(`<strong>${escapeHtml(input.customerEmail)}</strong> replied. Automated follow-ups for this quote are paused until you update it.`) +
+        (input.summary ? panel(paragraph(escapeHtml(input.summary)), "AI summary") : "") +
+        panel(textToHtml(input.excerpt), "Their message") +
+        button("Open the quote", input.url) +
+        smallPrint("Reply to this email to answer the customer directly."),
+    }),
   };
 }
 
@@ -117,8 +227,9 @@ export function buildMentionEmail(input: {
   note: string;
   url: string;
 }): AccountEmail {
+  const subject = `${input.authorName} mentioned you on ${input.quoteNumber}`;
   return {
-    subject: `${input.authorName} mentioned you on ${input.quoteNumber}`,
+    subject,
     text: [
       `${input.authorName} mentioned you in a team note on ${input.quoteNumber}:`,
       "",
@@ -127,6 +238,59 @@ export function buildMentionEmail(input: {
       `Open the quote: ${input.url}`,
       ...SIGN_OFF,
     ].join("\n"),
+    html: brandEmail({
+      subject,
+      preheader: input.note.slice(0, 120),
+      reason: "You're receiving this because a teammate @mentioned you in QuoteFollow.",
+      body:
+        heading(`${input.authorName} mentioned you`) +
+        paragraph(`In a team note on <strong>${escapeHtml(input.quoteNumber)}</strong>:`) +
+        panel(textToHtml(input.note)) +
+        button("Open the quote", input.url),
+    }),
+  };
+}
+
+/** The full customer reply, forwarded to the business reply-to inbox. */
+export function buildReplyForwardEmail(input: {
+  quoteNumber: string;
+  customerEmail: string;
+  customerSubject?: string | null;
+  summary: string | null;
+  body: string;
+  url: string;
+}): AccountEmail {
+  const subject = `Customer reply on ${input.quoteNumber}${input.customerSubject ? `: ${input.customerSubject}` : ""}`;
+  const lines = [
+    `${input.customerEmail} replied to your follow-up on ${input.quoteNumber}.`,
+    "Automated follow-ups for this quote are paused.",
+  ];
+  if (input.summary) {
+    lines.push("", `AI summary: ${input.summary}`);
+  }
+  lines.push(
+    "",
+    "— Customer message —",
+    input.body.trim(),
+    "",
+    `Open the quote: ${input.url}`,
+    "Reply to this email to answer the customer directly.",
+  );
+  return {
+    subject,
+    text: lines.join("\n"),
+    html: brandEmail({
+      subject,
+      preheader: input.summary ?? input.body.trim().slice(0, 120),
+      reason: "You're receiving this because this address is the reply-to email for your QuoteFollow workspace.",
+      body:
+        heading(`${input.quoteNumber}: new customer reply`) +
+        paragraph(`<strong>${escapeHtml(input.customerEmail)}</strong> replied to your follow-up. Automated follow-ups for this quote are paused.`) +
+        (input.summary ? panel(paragraph(escapeHtml(input.summary)), "AI summary") : "") +
+        panel(textToHtml(input.body), "Customer message") +
+        button("Open the quote", input.url) +
+        smallPrint("Reply to this email to answer the customer directly."),
+    }),
   };
 }
 
@@ -144,6 +308,7 @@ export async function sendAccountEmail(
     to,
     subject: email.subject,
     text: email.text,
+    html: email.html,
     replyTo: options?.replyTo ?? null,
   });
 }

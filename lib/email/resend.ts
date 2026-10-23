@@ -16,6 +16,8 @@ export async function sendTransactionalEmail(input: {
   to: string;
   subject: string;
   text: string;
+  /** Designed version; `text` is still sent for clients that prefer it. */
+  html?: string;
   replyTo?: string | null;
   headers?: Record<string, string>;
 }) {
@@ -25,6 +27,7 @@ export async function sendTransactionalEmail(input: {
     to: input.to,
     subject: input.subject,
     text: input.text,
+    html: input.html,
     replyTo: input.replyTo ?? undefined,
     headers: input.headers,
   });

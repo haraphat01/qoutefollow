@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { sendTransactionalEmail } from "@/lib/email/resend";
 import { buildFollowUpTemplateVariables } from "@/lib/email/build-template-variables";
 import {
+  buildFollowUpEmailHtml,
   buildFollowUpEmailText,
   renderEmailTemplate,
 } from "@/lib/email/templates";
@@ -209,12 +210,32 @@ export async function sendScheduledFollowUp(
     unsubscribeUrl: unsub,
   });
 
+  const replyTo = replyAddressForQuote(quote.id) ?? organization.replyEmail;
+  const html = buildFollowUpEmailHtml({
+    subject,
+    body,
+    businessName: organization.name,
+    replyEmail: organization.replyEmail,
+    businessPhone: organization.businessPhone,
+    emailSignature: organization.emailSignature,
+    mailingAddress: organization.mailingAddress,
+    unsubscribeUrl: unsub,
+    replyTo,
+    estimate: {
+      quoteNumber: variables.quote_number,
+      jobDescription: variables.job_description,
+      amount: variables.quote_amount,
+      expiresAt: variables.expires_at,
+    },
+  });
+
   try {
     const providerMessageId = await sendTransactionalEmail({
       to: customer.email,
       subject,
       text,
-      replyTo: replyAddressForQuote(quote.id) ?? organization.replyEmail,
+      html,
+      replyTo,
       headers: {
         "X-QuoteFollow-Quote-Id": quote.id,
         "X-QuoteFollow-Org-Id": organization.id,

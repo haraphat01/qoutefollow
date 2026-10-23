@@ -68,7 +68,7 @@ export default async function AdminPage({
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="Users" value={stats.users} hint={`${stats.newUsers} new in 30 days`} />
         <StatCard label="Workspaces" value={stats.workspaces} hint={`${stats.suspendedWorkspaces} suspended`} />
         <StatCard label="Quotes" value={stats.quotes} hint={`${stats.followUpsSent30d} follow-ups sent in 30 days`} />

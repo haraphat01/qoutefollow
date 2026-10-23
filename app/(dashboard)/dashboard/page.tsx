@@ -70,16 +70,16 @@ export default async function DashboardPage() {
         </Button>
       </div>
 
-      <section aria-label="Quote metrics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Quote metrics" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {metrics.map((metric) => (
-          <Card key={metric.label} className="gap-0">
-            <CardContent className="flex items-start justify-between gap-3 pt-5">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">{metric.label}</p>
-                <p className="mt-3 text-[2rem] font-semibold leading-none tracking-[-0.055em] text-foreground">{metric.value}</p>
+          <Card key={metric.label} className="gap-0 py-4 sm:py-6">
+            <CardContent className="flex flex-col-reverse items-start justify-between gap-3 px-4 sm:flex-row sm:px-6 sm:pt-5">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-muted-foreground sm:text-sm">{metric.label}</p>
+                <p className="mt-2 truncate text-2xl font-semibold leading-none tracking-[-0.055em] text-foreground sm:mt-3 sm:text-[2rem]">{metric.value}</p>
                 <p className="mt-2 text-xs text-muted-foreground">{metric.note}</p>
               </div>
-              <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${metric.tone}`}><metric.icon className="size-[1.15rem]" strokeWidth={1.9} /></span>
+              <span className={`grid size-8 shrink-0 place-items-center rounded-xl sm:size-10 ${metric.tone}`}><metric.icon className="size-4 sm:size-[1.15rem]" strokeWidth={1.9} /></span>
             </CardContent>
           </Card>
         ))}

@@ -13,6 +13,7 @@ import {
 } from "@/lib/db/schema";
 import { cancelScheduledFollowUpsForQuote } from "@/lib/follow-ups/schedule";
 import { inboundReplyDomain } from "@/lib/email/reply-address";
+import { buildReplyForwardEmail } from "@/lib/email/account-emails";
 import { sendTransactionalEmail } from "@/lib/email/resend";
 import { emailCustomerReplyAlert } from "@/lib/email/team-alerts";
 import { appUrl } from "@/lib/billing/stripe";
@@ -44,26 +45,20 @@ async function forwardReplyToContractor(input: {
     return null;
   }
 
-  const lines = [
-    `${input.fromEmail} replied to your follow-up on ${input.quoteNumber}.`,
-    "Automated follow-ups for this quote are paused.",
-  ];
-  if (input.summary) {
-    lines.push("", `AI summary: ${input.summary}`);
-  }
-  lines.push(
-    "",
-    "— Customer message —",
-    input.body.trim(),
-    "",
-    `Open the quote: ${appUrl(`/quotes/${input.quoteId}`)}`,
-    "Reply to this email to answer the customer directly.",
-  );
+  const email = buildReplyForwardEmail({
+    quoteNumber: input.quoteNumber,
+    customerEmail: input.fromEmail,
+    customerSubject: input.subject,
+    summary: input.summary,
+    body: input.body,
+    url: appUrl(`/quotes/${input.quoteId}`),
+  });
 
   await sendTransactionalEmail({
     to: org.replyEmail,
-    subject: `Customer reply on ${input.quoteNumber}${input.subject ? `: ${input.subject}` : ""}`,
-    text: lines.join("\n"),
+    subject: email.subject,
+    text: email.text,
+    html: email.html,
     replyTo: input.fromEmail,
   });
   return org.replyEmail;
