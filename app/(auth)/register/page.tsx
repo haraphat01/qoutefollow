@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { RegisterForm } from "@/components/auth/register-form";
@@ -9,6 +10,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Sparkles } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Start your free trial",
+  description:
+    "Create a QuoteFollow workspace and start automatic follow-ups on your roofing, HVAC, and plumbing estimates.",
+  alternates: { canonical: "/register" },
+};
 
 export default function RegisterPage() {
   return (

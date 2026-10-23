@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -11,8 +12,69 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { PLAN_BENEFITS, PLAN_CATALOG, TRIAL_DAYS } from "@/lib/billing/plans";
+import { FAQ, SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site";
 
 const plan = PLAN_CATALOG.starter;
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
+
+/** Structured data so search engines and AI assistants can describe the product accurately. */
+function structuredData() {
+  const url = siteUrl();
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${url}/#organization`,
+        name: SITE_NAME,
+        url,
+        logo: `${url}/icon-512.png`,
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${url}/#website`,
+        name: SITE_NAME,
+        url,
+        description: SITE_DESCRIPTION,
+        publisher: { "@id": `${url}/#organization` },
+        inLanguage: "en-US",
+      },
+      {
+        "@type": "SoftwareApplication",
+        name: SITE_NAME,
+        url,
+        description: SITE_DESCRIPTION,
+        applicationCategory: "BusinessApplication",
+        applicationSubCategory: "Quote follow-up and estimate tracking",
+        operatingSystem: "Web browser",
+        audience: {
+          "@type": "BusinessAudience",
+          audienceType: "Roofing, HVAC, and plumbing contractors",
+        },
+        featureList: [...PLAN_BENEFITS],
+        offers: {
+          "@type": "Offer",
+          price: plan.priceMonthly,
+          priceCurrency: "USD",
+          description: `${TRIAL_DAYS}-day free trial, then $${plan.priceMonthly} per month`,
+          url: `${url}/register`,
+        },
+        publisher: { "@id": `${url}/#organization` },
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: FAQ.map((item) => ({
+          "@type": "Question",
+          name: item.question,
+          acceptedAnswer: { "@type": "Answer", text: item.answer },
+        })),
+      },
+    ],
+  };
+}
 
 const steps = [
   { day: "02", title: "A friendly check-in", description: "Give customers a helpful nudge while the estimate is still fresh." },
@@ -23,6 +85,13 @@ const steps = [
 export default function HomePage() {
   return (
     <div className="min-h-screen overflow-hidden bg-[#f8f8f3] text-[#1d3029]">
+      <script
+        type="application/ld+json"
+        // Escape "<" so the JSON can't close the script tag.
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredData()).replace(/</g, "\\u003c"),
+        }}
+      />
       <header className="relative z-10 mx-auto flex max-w-[1240px] items-center justify-between px-5 py-5 md:px-10 md:py-7">
         <Link href="/" className="flex items-center gap-2.5" aria-label="QuoteFollow home">
           <span className="grid size-9 place-items-center rounded-xl bg-[#234b3e] text-white">
@@ -31,6 +100,9 @@ export default function HomePage() {
           <span className="text-[1.05rem] font-bold tracking-tight">QuoteFollow</span>
         </Link>
         <nav aria-label="Account" className="flex items-center gap-2">
+          <Button asChild variant="ghost" className="hidden text-[#385347] sm:inline-flex">
+            <Link href="#faq">FAQ</Link>
+          </Button>
           <Button asChild variant="ghost" className="hidden text-[#385347] sm:inline-flex">
             <Link href="#pricing">Pricing</Link>
           </Button>
@@ -51,7 +123,7 @@ export default function HomePage() {
           <div className="relative z-10">
             <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#dce5d9] bg-white/80 px-3.5 py-2 text-xs font-semibold tracking-wide text-[#456454] shadow-sm">
               <span className="size-2 rounded-full bg-[#65a378]" />
-              MADE FOR THE WAY TRADES WORK
+              QUOTE FOLLOW-UP SOFTWARE FOR CONTRACTORS
             </p>
             <h1 className="max-w-[650px] text-[clamp(3.15rem,7vw,5.8rem)] font-semibold leading-[0.99] tracking-[-0.075em] text-[#20372e]">
               Good work deserves a <span className="font-serif font-medium italic text-[#598264]">follow-up.</span>
@@ -212,9 +284,41 @@ export default function HomePage() {
             </p>
           </div>
         </section>
+
+        <section
+          id="faq"
+          className="scroll-mt-24 border-t border-[#e8ebe3] bg-white/70"
+          aria-labelledby="faq-heading"
+        >
+          <div className="mx-auto max-w-3xl px-5 py-16 md:px-10 md:py-20">
+            <p className="eyebrow text-center">QUESTIONS CONTRACTORS ASK</p>
+            <h2
+              id="faq-heading"
+              className="mt-3 text-center text-3xl font-semibold tracking-[-0.05em] text-[#263c31] md:text-4xl"
+            >
+              Frequently asked questions
+            </h2>
+            <div className="mt-10 divide-y divide-[#e6ebe1] rounded-2xl border border-[#e2e7dd] bg-white">
+              {FAQ.map((item) => (
+                <details key={item.question} className="group px-5 py-4 sm:px-6">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-[#2d4537] [&::-webkit-details-marker]:hidden">
+                    <h3>{item.question}</h3>
+                    <span aria-hidden className="text-lg leading-none text-[#6f8a77] transition-transform group-open:rotate-45">+</span>
+                  </summary>
+                  <p className="mt-3 text-sm leading-relaxed text-[#60736a]">{item.answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
       <footer className="mx-auto flex max-w-[1240px] flex-col gap-3 px-5 py-7 text-xs text-[#849087] sm:flex-row sm:items-center sm:justify-between md:px-10">
-        <p>QuoteFollow · Less chasing. More booked work.</p>
+        <p>QuoteFollow · Quote follow-up software for contractors. Less chasing. More booked work.</p>
+        <nav aria-label="Footer" className="flex flex-wrap gap-4">
+          <Link href="#faq" className="hover:text-[#285742]">FAQ</Link>
+          <Link href="#pricing" className="hover:text-[#285742]">Pricing</Link>
+          <Link href="/login" className="hover:text-[#285742]">Sign in</Link>
+        </nav>
         <Link href="/register" className="font-semibold text-[#4b6f57] hover:text-[#285742]">Build your workspace <ArrowRight className="ml-1 inline size-3.5" /></Link>
       </footer>
     </div>

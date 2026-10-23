@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Suspense } from "react";
@@ -11,6 +12,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ArrowRight, LockKeyhole } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Sign in",
+  description:
+    "Sign in to your QuoteFollow workspace to track estimates and follow-ups.",
+  alternates: { canonical: "/login" },
+};
 
 export default function LoginPage() {
   return (

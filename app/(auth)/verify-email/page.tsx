@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { MailCheck } from "lucide-react";
@@ -12,6 +13,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getSession } from "@/lib/auth/session";
+
+export const metadata: Metadata = {
+  title: "Confirm your email",
+  robots: { index: false, follow: false },
+};
 
 export const instant = false;
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { KeyRound } from "lucide-react";
@@ -10,6 +11,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "Choose a new password",
+  robots: { index: false, follow: false },
+};
 
 export default function ResetPasswordPage() {
   return (

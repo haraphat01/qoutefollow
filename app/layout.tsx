@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, siteUrl } from "@/lib/site";
 
 import "./globals.css";
 
@@ -15,9 +16,39 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "QuoteFollow — contractor quote follow-ups",
-  description:
-    "Organize roofing, HVAC, and plumbing estimates with a thoughtful follow-up schedule.",
+  metadataBase: new URL(siteUrl()),
+  title: { default: SITE_TITLE, template: `%s · ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: [
+    "quote follow-up software",
+    "estimate follow-up",
+    "contractor follow-up emails",
+    "roofing estimate follow-up",
+    "HVAC quote follow-up",
+    "plumbing estimate follow-up",
+    "contractor CRM",
+    "automated follow-up emails",
+  ],
+  category: "business",
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: "/",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  robots: { index: true, follow: true },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0c281c",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
