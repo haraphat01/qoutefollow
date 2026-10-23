@@ -13,6 +13,7 @@ import {
 import { getSession } from "@/lib/auth/session";
 import { toDateInputValue } from "@/lib/format";
 import { getQuoteDetail } from "@/lib/queries/quotes";
+import { listQuoteLineItems } from "@/lib/quotes/save-line-items";
 
 export default async function EditQuotePage({
   params,
@@ -31,6 +32,12 @@ export default async function EditQuotePage({
   }
 
   const { quote, customer } = detail;
+  const items = await listQuoteLineItems(quote.id);
+  // Quotes created before itemizing become a single line for their amount.
+  const lineItems =
+    items.length > 0
+      ? items
+      : [{ description: quote.jobDescription.slice(0, 300), quantity: 1, unitPrice: Number(quote.amount) }];
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -54,7 +61,7 @@ export default async function EditQuotePage({
           <QuoteEditForm
             quote={{
               id: quote.id,
-              amount: quote.amount,
+              lineItems,
               jobDescription: quote.jobDescription,
               quoteDate: toDateInputValue(quote.quoteDate),
               expiresAt: toDateInputValue(quote.expiresAt),

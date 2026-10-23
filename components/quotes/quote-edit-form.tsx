@@ -4,6 +4,7 @@ import { useActionState } from "react";
 
 import { updateQuoteAction } from "@/lib/actions/quotes";
 import type { ActionState } from "@/lib/actions/auth";
+import { LineItemsEditor, type LineItemDraft } from "@/components/quotes/line-items-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +17,7 @@ export function QuoteEditForm({
 }: {
   quote: {
     id: string;
-    amount: string;
+    lineItems: LineItemDraft[];
     jobDescription: string;
     quoteDate: string;
     expiresAt: string;
@@ -35,14 +36,18 @@ export function QuoteEditForm({
         </p>
       ) : null}
 
+      <div className="space-y-2">
+        <Label htmlFor="jobDescription">Job description</Label>
+        <Textarea id="jobDescription" name="jobDescription" rows={3} required defaultValue={quote.jobDescription} />
+        {state.fieldErrors?.jobDescription ? (
+          <p className="text-sm text-destructive">{state.fieldErrors.jobDescription[0]}</p>
+        ) : null}
+      </div>
+      <div className="space-y-2">
+        <p className="text-sm font-medium">Items</p>
+        <LineItemsEditor initialItems={quote.lineItems} error={state.fieldErrors?.lineItems?.[0]} />
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="amount">Quote amount (USD)</Label>
-          <Input id="amount" name="amount" type="number" min="1" step="0.01" inputMode="decimal" required defaultValue={quote.amount} />
-          {state.fieldErrors?.amount ? (
-            <p className="text-sm text-destructive">{state.fieldErrors.amount[0]}</p>
-          ) : null}
-        </div>
         <div className="space-y-2">
           <Label htmlFor="quoteDate">Quote date</Label>
           <Input id="quoteDate" name="quoteDate" type="date" required defaultValue={quote.quoteDate} />
@@ -50,18 +55,11 @@ export function QuoteEditForm({
             <p className="text-sm text-destructive">{state.fieldErrors.quoteDate[0]}</p>
           ) : null}
         </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="jobDescription">Job description</Label>
-        <Textarea id="jobDescription" name="jobDescription" rows={4} required defaultValue={quote.jobDescription} />
-        {state.fieldErrors?.jobDescription ? (
-          <p className="text-sm text-destructive">{state.fieldErrors.jobDescription[0]}</p>
-        ) : null}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="expiresAt">Expiration date <span className="font-normal text-muted-foreground">(optional)</span></Label>
-        <Input id="expiresAt" name="expiresAt" type="date" defaultValue={quote.expiresAt} className="sm:max-w-xs" />
-        <p className="text-xs text-muted-foreground">Moving the date forward reopens an expired quote.</p>
+        <div className="space-y-2">
+          <Label htmlFor="expiresAt">Expiration date <span className="font-normal text-muted-foreground">(optional)</span></Label>
+          <Input id="expiresAt" name="expiresAt" type="date" defaultValue={quote.expiresAt} />
+          <p className="text-xs text-muted-foreground">Moving the date forward reopens an expired quote.</p>
+        </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="notes">Internal notes <span className="font-normal text-muted-foreground">(optional)</span></Label>

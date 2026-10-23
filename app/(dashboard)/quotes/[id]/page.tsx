@@ -33,6 +33,8 @@ import { listQuoteInternalNotes } from "@/lib/queries/internal-notes";
 import { listOrganizationMembers } from "@/lib/queries/members";
 import { listQuoteDocuments } from "@/lib/queries/documents";
 import { getQuoteDetail } from "@/lib/queries/quotes";
+import { lineTotal } from "@/lib/quotes/line-items";
+import { listQuoteLineItems } from "@/lib/quotes/save-line-items";
 import { getLatestInboundInsight } from "@/lib/queries/intelligence";
 import { getQuoteEmailAuditLog } from "@/lib/queries/quote-email-audit";
 import { formatClassificationLabel } from "@/lib/replies/classification-labels";
@@ -40,7 +42,7 @@ import { listOrganizationSequences } from "@/lib/queries/sequences";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { followUpSequences, followUpSteps, scheduledFollowUps } from "@/lib/db/schema";
-import { formatCurrency, formatDate } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 import { isExpirationUrgent, daysUntilExpiration } from "@/lib/follow-ups/expiration";
 
 export default async function QuoteDetailPage({
@@ -60,6 +62,7 @@ export default async function QuoteDetailPage({
   }
 
   const { quote, customer } = detail;
+  const lineItems = await listQuoteLineItems(quote.id);
 
   const [
     conversationRows,
@@ -157,12 +160,45 @@ export default async function QuoteDetailPage({
           <CardContent className="space-y-5 pt-5">
             <div className="rounded-xl bg-muted/70 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Quote amount</p>
-              <p className="mt-2 text-3xl font-semibold tracking-[-0.05em]">{formatCurrency(quote.amount)}</p>
+              <p className="mt-2 text-3xl font-semibold tracking-[-0.05em]">{formatMoney(quote.amount)}</p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Job description</p>
               <p className="mt-2 text-sm leading-relaxed">{quote.jobDescription}</p>
             </div>
+            {lineItems.length > 0 ? (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Items</p>
+                <div className="mt-2 overflow-x-auto rounded-xl border border-border/80">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+                      <tr>
+                        <th className="px-3 py-2 font-medium">Item</th>
+                        <th className="px-3 py-2 text-right font-medium">Qty</th>
+                        <th className="px-3 py-2 text-right font-medium">Unit price</th>
+                        <th className="px-3 py-2 text-right font-medium">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/70">
+                      {lineItems.map((item) => (
+                        <tr key={item.id}>
+                          <td className="min-w-40 px-3 py-2.5">{item.description}</td>
+                          <td className="px-3 py-2.5 text-right tabular-nums">{item.quantity}</td>
+                          <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(item.unitPrice)}</td>
+                          <td className="px-3 py-2.5 text-right font-medium tabular-nums">{formatMoney(lineTotal(item))}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t border-border/80">
+                        <td colSpan={3} className="px-3 py-2.5 text-right font-semibold">Total</td>
+                        <td className="px-3 py-2.5 text-right font-semibold tabular-nums">{formatMoney(quote.amount)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            ) : null}
             <div className="grid gap-4 border-t border-border/70 pt-4 sm:grid-cols-2">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Expires</p>
@@ -216,8 +252,8 @@ export default async function QuoteDetailPage({
                 <span className="grid size-9 place-items-center rounded-full bg-muted text-primary"><UserRound className="size-4" /></span>
                 <Link href={`/customers/${customer.id}`} className="text-sm font-semibold hover:text-primary">{customer.name}</Link>
               </div>
-              <a href={`mailto:${customer.email}`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
-                <Mail className="size-4" />{customer.email}
+              <a href={`mailto:${customer.email}`} className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground hover:text-primary">
+                <Mail className="size-4 shrink-0" /><span className="min-w-0 break-all">{customer.email}</span>
               </a>
             </CardContent>
           </Card>

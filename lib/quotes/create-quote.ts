@@ -9,7 +9,10 @@ import {
   quotes,
 } from "@/lib/db/schema";
 import { scheduleFollowUpsForQuote } from "@/lib/follow-ups/schedule";
+import type { LineItem } from "@/lib/quotes/line-items";
+import { quoteTotal } from "@/lib/quotes/line-items";
 import { nextQuoteNumber } from "@/lib/quotes/numbers";
+import { replaceQuoteLineItems } from "@/lib/quotes/save-line-items";
 
 export type CreateQuoteInput = {
   organizationId: string;
@@ -17,7 +20,8 @@ export type CreateQuoteInput = {
   customerId?: string;
   customerName?: string;
   customerEmail?: string;
-  amount: number;
+  /** The quote amount is their total. */
+  lineItems: LineItem[];
   jobDescription: string;
   quoteDate: Date;
   expiresAt?: Date | null;
@@ -125,7 +129,7 @@ export async function createQuoteFromInput(input: CreateQuoteInput) {
       organizationId: input.organizationId,
       customerId,
       quoteNumber,
-      amount: input.amount.toFixed(2),
+      amount: quoteTotal(input.lineItems).toFixed(2),
       jobDescription: input.jobDescription,
       quoteDate: input.quoteDate,
       expiresAt: input.expiresAt ?? null,
@@ -137,6 +141,12 @@ export async function createQuoteFromInput(input: CreateQuoteInput) {
       approvedAt,
     })
     .returning();
+
+  await replaceQuoteLineItems(db, {
+    organizationId: input.organizationId,
+    quoteId: quote.id,
+    items: input.lineItems,
+  });
 
   if (input.documentId) {
     await db

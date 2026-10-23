@@ -5,7 +5,6 @@ export const confirmImportedQuoteSchema = z.object({
   customerName: z.string().min(2, "Customer name is required"),
   customerEmail: z.string().email("Enter a valid customer email"),
   estimateNumber: z.string().optional(),
-  amount: z.coerce.number().positive("Amount must be greater than zero"),
   jobDescription: z.string().min(3, "Describe the job"),
   quoteDate: z.string().min(1, "Quote date is required"),
   expiresAt: z.string().optional(),

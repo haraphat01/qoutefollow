@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { confirmImportedQuoteAction } from "@/lib/actions/pdf-import";
 import type { ActionState } from "@/lib/actions/auth";
 import type { ExtractedQuoteFields } from "@/lib/ai/extract-quote-fields";
+import { LineItemsEditor } from "@/components/quotes/line-items-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,23 +76,29 @@ export function ImportConfirmForm({
       <section className="space-y-4 border-t border-border/70 pt-6">
         <div>
           <h2 className="text-sm font-semibold">Estimate</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Check the amounts and job details against the original PDF.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Check the amounts and job details against the original PDF. Split the total into items if you like.</p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="estimateNumber">Estimate / quote number <span className="font-normal text-muted-foreground">(optional)</span></Label>
-            <Input id="estimateNumber" name="estimateNumber" defaultValue={fields.estimateNumber ?? ""} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount (USD)</Label>
-            <Input id="amount" name="amount" type="number" min="1" step="0.01" inputMode="decimal" required defaultValue={fields.amount ?? ""} />
-            {state.fieldErrors?.amount ? <p className="text-sm text-destructive">{state.fieldErrors.amount[0]}</p> : null}
-          </div>
+        <div className="space-y-2 sm:max-w-sm">
+          <Label htmlFor="estimateNumber">Estimate / quote number <span className="font-normal text-muted-foreground">(optional)</span></Label>
+          <Input id="estimateNumber" name="estimateNumber" defaultValue={fields.estimateNumber ?? ""} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="jobDescription">Job description</Label>
-          <Textarea id="jobDescription" name="jobDescription" rows={4} required defaultValue={fields.jobDescription ?? ""} />
+          <Textarea id="jobDescription" name="jobDescription" rows={3} required defaultValue={fields.jobDescription ?? ""} />
           {state.fieldErrors?.jobDescription ? <p className="text-sm text-destructive">{state.fieldErrors.jobDescription[0]}</p> : null}
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Items</p>
+          <LineItemsEditor
+            initialItems={[
+              {
+                description: (fields.jobDescription ?? "Estimate total").slice(0, 300),
+                quantity: 1,
+                unitPrice: fields.amount ?? "",
+              },
+            ]}
+            error={state.fieldErrors?.lineItems?.[0]}
+          />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">

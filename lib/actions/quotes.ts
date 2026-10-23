@@ -13,6 +13,8 @@ import {
   syncQuoteFollowUpEligibility,
 } from "@/lib/follow-ups/schedule";
 import { createQuoteFromInput } from "@/lib/quotes/create-quote";
+import { parseLineItemsField } from "@/lib/quotes/line-items";
+import { replaceQuoteLineItems } from "@/lib/quotes/save-line-items";
 import {
   quoteSchema,
   quoteStatusSchema,
@@ -40,7 +42,6 @@ export async function createQuoteAction(
     customerId: formData.get("customerId") || undefined,
     customerName: formData.get("customerName") || undefined,
     customerEmail: formData.get("customerEmail") || undefined,
-    amount: formData.get("amount"),
     jobDescription: formData.get("jobDescription"),
     quoteDate: formData.get("quoteDate"),
     expiresAt: formData.get("expiresAt") || undefined,
@@ -50,8 +51,14 @@ export async function createQuoteAction(
     sequenceId: formData.get("sequenceId") || undefined,
   });
 
-  if (!parsed.success) {
-    return { fieldErrors: parsed.error.flatten().fieldErrors };
+  const lineItems = parseLineItemsField(formData.get("lineItems"));
+  if (!parsed.success || "error" in lineItems) {
+    return {
+      fieldErrors: {
+        ...(parsed.success ? {} : parsed.error.flatten().fieldErrors),
+        ...("error" in lineItems ? { lineItems: [lineItems.error] } : {}),
+      },
+    };
   }
 
   const data = parsed.data;
@@ -64,7 +71,7 @@ export async function createQuoteAction(
       customerId: data.customerId,
       customerName: data.customerName,
       customerEmail: data.customerEmail,
-      amount: data.amount,
+      lineItems: lineItems.items,
       jobDescription: data.jobDescription,
       quoteDate: parseDateInput(data.quoteDate),
       expiresAt: data.expiresAt ? parseDateInput(data.expiresAt, "end") : null,
@@ -167,7 +174,6 @@ export async function updateQuoteAction(
 
   const parsed = updateQuoteSchema.safeParse({
     quoteId: formData.get("quoteId"),
-    amount: formData.get("amount"),
     jobDescription: formData.get("jobDescription"),
     quoteDate: formData.get("quoteDate"),
     expiresAt: formData.get("expiresAt") || undefined,
@@ -175,8 +181,14 @@ export async function updateQuoteAction(
     followUpsEnabled: parseFollowUpsEnabled(formData.get("followUpsEnabled")),
   });
 
-  if (!parsed.success) {
-    return { fieldErrors: parsed.error.flatten().fieldErrors };
+  const lineItems = parseLineItemsField(formData.get("lineItems"));
+  if (!parsed.success || "error" in lineItems) {
+    return {
+      fieldErrors: {
+        ...(parsed.success ? {} : parsed.error.flatten().fieldErrors),
+        ...("error" in lineItems ? { lineItems: [lineItems.error] } : {}),
+      },
+    };
   }
 
   const data = parsed.data;
@@ -202,19 +214,26 @@ export async function updateQuoteAction(
   const reopened =
     existing.status === "expired" && expiresAt && expiresAt > new Date();
 
-  await db
-    .update(quotes)
-    .set({
-      amount: data.amount.toFixed(2),
-      jobDescription: data.jobDescription,
-      quoteDate: parseDateInput(data.quoteDate),
-      expiresAt,
-      notes: data.notes ?? null,
-      followUpsEnabled: data.followUpsEnabled,
-      status: reopened ? "pending" : existing.status,
-      updatedAt: new Date(),
-    })
-    .where(eq(quotes.id, existing.id));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(quotes)
+      .set({
+        amount: lineItems.total.toFixed(2),
+        jobDescription: data.jobDescription,
+        quoteDate: parseDateInput(data.quoteDate),
+        expiresAt,
+        notes: data.notes ?? null,
+        followUpsEnabled: data.followUpsEnabled,
+        status: reopened ? "pending" : existing.status,
+        updatedAt: new Date(),
+      })
+      .where(eq(quotes.id, existing.id));
+    await replaceQuoteLineItems(tx, {
+      organizationId: session.organization.id,
+      quoteId: existing.id,
+      items: lineItems.items,
+    });
+  });
 
   const status = reopened ? "pending" : existing.status;
   if (!data.followUpsEnabled) {
@@ -230,7 +249,11 @@ export async function updateQuoteAction(
     entityType: "quote",
     entityId: existing.id,
     action: "updated",
-    metadata: JSON.stringify({ followUpsEnabled: data.followUpsEnabled }),
+    metadata: JSON.stringify({
+      followUpsEnabled: data.followUpsEnabled,
+      items: lineItems.items.length,
+      amount: lineItems.total.toFixed(2),
+    }),
   });
 
   revalidatePath(`/quotes/${existing.id}`);

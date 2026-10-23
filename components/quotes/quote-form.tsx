@@ -5,6 +5,7 @@ import Link from "next/link";
 
 import { createQuoteAction } from "@/lib/actions/quotes";
 import type { ActionState } from "@/lib/actions/auth";
+import { LineItemsEditor } from "@/components/quotes/line-items-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,16 +81,22 @@ export function QuoteForm({
       <section className="space-y-4 border-t border-border/70 pt-6">
         <div>
           <h2 className="text-sm font-semibold">Estimate</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Add the value and the work being proposed.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Summarize the job, then list each item. The total is calculated for you.</p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="amount">Quote amount (USD)</Label>
-            <Input id="amount" name="amount" type="number" min="1" step="0.01" inputMode="decimal" placeholder="0.00" required />
-            {state.fieldErrors?.amount ? (
-              <p className="text-sm text-destructive">{state.fieldErrors.amount[0]}</p>
-            ) : null}
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="jobDescription">Job description</Label>
+          <Textarea id="jobDescription" name="jobDescription" rows={3} placeholder="e.g. Full roof replacement, 2,400 sq ft" required />
+          {state.fieldErrors?.jobDescription ? (
+            <p className="text-sm text-destructive">
+              {state.fieldErrors.jobDescription[0]}
+            </p>
+          ) : null}
+        </div>
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Items</p>
+          <LineItemsEditor error={state.fieldErrors?.lineItems?.[0]} />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="quoteDate">Quote date</Label>
             <Input
@@ -100,17 +107,6 @@ export function QuoteForm({
               required
             />
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="jobDescription">Job description</Label>
-          <Textarea id="jobDescription" name="jobDescription" rows={4} placeholder="Describe the work included in this estimate…" required />
-          {state.fieldErrors?.jobDescription ? (
-            <p className="text-sm text-destructive">
-              {state.fieldErrors.jobDescription[0]}
-            </p>
-          ) : null}
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="expiresAt">Expiration date <span className="font-normal text-muted-foreground">(optional)</span></Label>
             <Input id="expiresAt" name="expiresAt" type="date" />

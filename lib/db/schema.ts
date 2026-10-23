@@ -239,6 +239,24 @@ export const quotes = pgTable("quotes", {
     .defaultNow(),
 });
 
+/** Itemized lines; quotes.amount always holds their total. */
+export const quoteLineItems = pgTable("quote_line_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  quoteId: uuid("quote_id")
+    .notNull()
+    .references(() => quotes.id, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+  sortOrder: integer("sort_order").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const quoteDocuments = pgTable("quote_documents", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id")

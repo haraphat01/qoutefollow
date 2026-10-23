@@ -7,6 +7,15 @@ export function formatCurrency(amount: string | number) {
   }).format(value);
 }
 
+/** Exact to the cent, for line items and totals. */
+export function formatMoney(amount: string | number) {
+  const value = typeof amount === "string" ? Number(amount) : amount;
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(value);
+}
+
 export function formatDate(date: Date | string) {
   const value = typeof date === "string" ? new Date(date) : date;
   return new Intl.DateTimeFormat("en-US", {

@@ -15,6 +15,7 @@ import { db } from "@/lib/db";
 import { quoteDocuments } from "@/lib/db/schema";
 import { processQuoteDocument } from "@/lib/pdf/process-document";
 import { createQuoteFromInput } from "@/lib/quotes/create-quote";
+import { parseLineItemsField } from "@/lib/quotes/line-items";
 import { saveOrganizationUpload } from "@/lib/storage/uploads";
 import { confirmImportedQuoteSchema } from "@/lib/validations/quote-import";
 
@@ -99,7 +100,6 @@ export async function confirmImportedQuoteAction(
     customerName: formData.get("customerName"),
     customerEmail: formData.get("customerEmail"),
     estimateNumber: formData.get("estimateNumber") || undefined,
-    amount: formData.get("amount"),
     jobDescription: formData.get("jobDescription"),
     quoteDate: formData.get("quoteDate"),
     expiresAt: formData.get("expiresAt") || undefined,
@@ -109,8 +109,14 @@ export async function confirmImportedQuoteAction(
     contactConfirmed: formData.get("contactConfirmed") === "on",
   });
 
-  if (!parsed.success) {
-    return { fieldErrors: parsed.error.flatten().fieldErrors };
+  const lineItems = parseLineItemsField(formData.get("lineItems"));
+  if (!parsed.success || "error" in lineItems) {
+    return {
+      fieldErrors: {
+        ...(parsed.success ? {} : parsed.error.flatten().fieldErrors),
+        ...("error" in lineItems ? { lineItems: [lineItems.error] } : {}),
+      },
+    };
   }
 
   const data = parsed.data;
@@ -141,7 +147,7 @@ export async function confirmImportedQuoteAction(
       userId: session.user.id,
       customerName: data.customerName,
       customerEmail: data.customerEmail,
-      amount: data.amount,
+      lineItems: lineItems.items,
       jobDescription: data.jobDescription,
       quoteDate: parseDateInput(data.quoteDate),
       expiresAt: data.expiresAt ? parseDateInput(data.expiresAt, "end") : null,
