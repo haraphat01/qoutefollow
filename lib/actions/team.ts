@@ -1,11 +1,15 @@
 "use server";
 
-import { and, eq, ne } from "drizzle-orm";
+import { randomBytes } from "crypto";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import type { ActionState } from "@/lib/actions/auth";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { sendTeamInviteEmail } from "@/lib/auth/account-flows";
 import { requireSession } from "@/lib/auth/session";
+import { issuedRecently } from "@/lib/auth/tokens";
+import { accountEmailsEnabled } from "@/lib/email/account-emails";
 import {
   assertEntitlement,
   getOrganizationEntitlements,
@@ -13,6 +17,7 @@ import {
 import { db } from "@/lib/db";
 import {
   activityLogs,
+  authTokens,
   organizationMembers,
   sessions,
   users,
@@ -44,10 +49,17 @@ export async function addTeamMemberAction(
   const parsed = addTeamMemberSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
-    password: formData.get("password"),
   });
   if (!parsed.success) {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  // With email configured the teammate sets their own password from an
+  // invite link; otherwise the owner hands over a temporary password.
+  const inviteByEmail = accountEmailsEnabled();
+  const tempPassword = String(formData.get("password") ?? "");
+  if (!inviteByEmail && tempPassword.length < 8) {
+    return { fieldErrors: { password: ["Use at least 8 characters"] } };
   }
 
   const email = parsed.data.email.toLowerCase();
@@ -69,9 +81,13 @@ export async function addTeamMemberAction(
     .values({
       name: parsed.data.name,
       email,
-      passwordHash: await hashPassword(parsed.data.password),
+      // Invitees get an unguessable placeholder until they choose a password.
+      passwordHash: await hashPassword(
+        inviteByEmail ? randomBytes(32).toString("hex") : tempPassword,
+      ),
+      emailVerifiedAt: inviteByEmail ? null : new Date(),
     })
-    .returning({ id: users.id });
+    .returning({ id: users.id, name: users.name, email: users.email });
 
   await db.insert(organizationMembers).values({
     organizationId: session.organization.id,
@@ -88,6 +104,62 @@ export async function addTeamMemberAction(
   });
 
   revalidatePath("/settings/team");
+
+  if (inviteByEmail) {
+    try {
+      await sendTeamInviteEmail(user, session.user, session.organization.name);
+    } catch {
+      return {
+        error: `${user.name} was added, but the invite email failed. Use “Resend invite”.`,
+      };
+    }
+  }
+  return { success: true };
+}
+
+export async function resendTeamInviteAction(
+  userId: string,
+): Promise<ActionState> {
+  const session = await requireSession().catch(() => null);
+  if (!session) {
+    return { error: "You must be signed in." };
+  }
+  if (session.role !== "owner") {
+    return { error: "Only the account owner can send invites." };
+  }
+
+  const [member] = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      emailVerifiedAt: users.emailVerifiedAt,
+    })
+    .from(organizationMembers)
+    .innerJoin(users, eq(users.id, organizationMembers.userId))
+    .where(
+      and(
+        eq(organizationMembers.organizationId, session.organization.id),
+        eq(organizationMembers.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  if (!member) {
+    return { error: "Teammate not found." };
+  }
+  if (member.emailVerifiedAt) {
+    return { error: `${member.name} has already joined.` };
+  }
+  if (await issuedRecently(member.id, "team_invite")) {
+    return { error: "An invite was just sent. Wait a minute before resending." };
+  }
+
+  try {
+    await sendTeamInviteEmail(member, session.user, session.organization.name);
+  } catch {
+    return { error: "We couldn't send the invite. Try again shortly." };
+  }
   return { success: true };
 }
 
@@ -128,6 +200,12 @@ export async function removeTeamMemberAction(
         eq(sessions.organizationId, session.organization.id),
       ),
     );
+
+  // An outstanding invite link must not let a removed teammate back in.
+  await db
+    .update(authTokens)
+    .set({ usedAt: new Date() })
+    .where(and(eq(authTokens.userId, userId), isNull(authTokens.usedAt)));
 
   await db.insert(activityLogs).values({
     organizationId: session.organization.id,

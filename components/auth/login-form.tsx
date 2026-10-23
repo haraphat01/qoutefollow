@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 import { loginAction, type ActionState } from "@/lib/actions/auth";
@@ -23,13 +24,16 @@ export function LoginForm({ next }: { next?: string }) {
       ) : null}
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" autoComplete="email" placeholder="you@yourbusiness.com" required />
+        <Input id="email" name="email" type="email" autoComplete="email" placeholder="you@yourbusiness.com" required defaultValue={state.values?.email} />
         {state.fieldErrors?.email ? (
           <p className="text-sm text-destructive">{state.fieldErrors.email[0]}</p>
         ) : null}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Password</Label>
+          <Link href="/forgot-password" className="text-xs font-semibold text-primary hover:underline">Forgot password?</Link>
+        </div>
         <Input
           id="password"
           name="password"

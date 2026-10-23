@@ -20,6 +20,8 @@ export type SessionUser = {
   id: string;
   email: string;
   name: string;
+  /** False until the user clicks their verification link (when required). */
+  emailVerified: boolean;
 };
 
 export type SessionOrganization = {
@@ -44,6 +46,11 @@ async function resolveActiveOrganizationId(userId: string) {
     .limit(1);
 
   return membership?.organizationId ?? null;
+}
+
+/** Sign a user out everywhere, e.g. after a password reset. */
+export async function destroyAllSessionsForUser(userId: string) {
+  await db.delete(sessions).where(eq(sessions.userId, userId));
 }
 
 export async function createSession(userId: string) {
@@ -103,6 +110,7 @@ export async function getSession(): Promise<AppSession | null> {
       userId: users.id,
       email: users.email,
       name: users.name,
+      emailVerifiedAt: users.emailVerifiedAt,
       role: organizationMembers.role,
       organizationId: organizations.id,
       organizationName: organizations.name,
@@ -137,6 +145,8 @@ export async function getSession(): Promise<AppSession | null> {
       id: row.userId,
       email: row.email,
       name: row.name,
+      emailVerified:
+        row.emailVerifiedAt !== null || !emailVerificationRequired(),
     },
     organization: {
       id: row.organizationId,
@@ -148,9 +158,15 @@ export async function getSession(): Promise<AppSession | null> {
   };
 }
 
+/** Verification needs working email; without Resend it is not enforced. */
+export function emailVerificationRequired() {
+  return Boolean(process.env.RESEND_API_KEY);
+}
+
+/** For server actions: a signed-in user who has verified their email. */
 export async function requireSession() {
   const session = await getSession();
-  if (!session) {
+  if (!session || !session.user.emailVerified) {
     throw new Error("UNAUTHORIZED");
   }
   return session;

@@ -8,6 +8,7 @@ import {
   addTeamMemberAction,
   changePasswordAction,
   removeTeamMemberAction,
+  resendTeamInviteAction,
 } from "@/lib/actions/team";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ type Member = {
   name: string;
   email: string;
   role: "owner" | "member";
+  invitePending: boolean;
 };
 
 function FieldError({ errors }: { errors?: string[] }) {
@@ -59,9 +61,32 @@ export function TeamMemberList({
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {member.invitePending ? (
+              <Badge variant="outline">Invite pending</Badge>
+            ) : null}
             <Badge variant={member.role === "owner" ? "default" : "secondary"} className="capitalize">
               {member.role}
             </Badge>
+            {isOwner && member.invitePending ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={pending}
+                onClick={() => {
+                  startTransition(async () => {
+                    const result = await resendTeamInviteAction(member.id);
+                    if (result.error) {
+                      toast.error(result.error);
+                      return;
+                    }
+                    toast.success(`Invite re-sent to ${member.email}.`);
+                  });
+                }}
+              >
+                Resend invite
+              </Button>
+            ) : null}
             {isOwner && member.role !== "owner" ? (
               <Button
                 type="button"
@@ -90,23 +115,27 @@ export function TeamMemberList({
   );
 }
 
-export function AddTeamMemberForm() {
+export function AddTeamMemberForm({ inviteByEmail }: { inviteByEmail: boolean }) {
   const [state, action, pending] = useActionState(addTeamMemberAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (state.success) {
-      toast.success("Teammate added. Share their temporary password with them.");
+      toast.success(
+        inviteByEmail
+          ? "Invite sent. They'll set their own password from the email."
+          : "Teammate added. Share their temporary password with them.",
+      );
       formRef.current?.reset();
     }
-  }, [state]);
+  }, [state, inviteByEmail]);
 
   return (
     <form ref={formRef} action={action} className="space-y-4">
       {state.error ? (
         <p role="alert" className="text-sm text-destructive">{state.error}</p>
       ) : null}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className={`grid gap-4 ${inviteByEmail ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
         <div className="space-y-2">
           <Label htmlFor="member-name">Name</Label>
           <Input id="member-name" name="name" required />
@@ -117,17 +146,21 @@ export function AddTeamMemberForm() {
           <Input id="member-email" name="email" type="email" required />
           <FieldError errors={state.fieldErrors?.email} />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="member-password">Temporary password</Label>
-          <Input id="member-password" name="password" type="text" minLength={8} autoComplete="off" required />
-          <FieldError errors={state.fieldErrors?.password} />
-        </div>
+        {inviteByEmail ? null : (
+          <div className="space-y-2">
+            <Label htmlFor="member-password">Temporary password</Label>
+            <Input id="member-password" name="password" type="text" minLength={8} autoComplete="off" required />
+            <FieldError errors={state.fieldErrors?.password} />
+          </div>
+        )}
       </div>
       <p className="text-xs text-muted-foreground">
-        They sign in with this email and password, then change it under Team.
+        {inviteByEmail
+          ? "We'll email them a link to set their password and join. The link lasts 7 days."
+          : "Email isn't configured, so they sign in with this password and change it under Team."}
       </p>
       <Button type="submit" disabled={pending}>
-        {pending ? "Adding…" : "Add teammate"}
+        {pending ? "Adding…" : inviteByEmail ? "Send invite" : "Add teammate"}
       </Button>
     </form>
   );

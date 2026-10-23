@@ -14,6 +14,9 @@ export default async function DashboardLayout({
   if (!session) {
     redirect("/login");
   }
+  if (!session.user.emailVerified) {
+    redirect("/verify-email");
+  }
 
   return <AppShell session={session}>{children}</AppShell>;
 }

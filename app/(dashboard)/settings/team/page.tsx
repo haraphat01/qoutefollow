@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getSession } from "@/lib/auth/session";
+import { accountEmailsEnabled } from "@/lib/email/account-emails";
 import { listOrganizationMembers } from "@/lib/queries/members";
 
 export default async function TeamSettingsPage() {
@@ -41,7 +42,10 @@ export default async function TeamSettingsPage() {
         </CardHeader>
         <CardContent className="pt-0">
           <TeamMemberList
-            members={members}
+            members={members.map((member) => ({
+              ...member,
+              invitePending: member.emailVerifiedAt === null,
+            }))}
             currentUserId={session.user.id}
             isOwner={isOwner}
           />
@@ -57,7 +61,7 @@ export default async function TeamSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
-            <AddTeamMemberForm />
+            <AddTeamMemberForm inviteByEmail={accountEmailsEnabled()} />
           </CardContent>
         </Card>
       ) : null}

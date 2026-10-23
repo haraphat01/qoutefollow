@@ -9,7 +9,7 @@ const PROTECTED_PREFIXES = [
   "/settings",
   "/reports",
 ];
-const AUTH_PATHS = ["/login", "/register"];
+const AUTH_PATHS = ["/login", "/register", "/forgot-password"];
 
 function hasValidSessionCookie(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE)?.value;
@@ -55,5 +55,6 @@ export const config = {
     "/reports",
     "/login",
     "/register",
+    "/forgot-password",
   ],
 };

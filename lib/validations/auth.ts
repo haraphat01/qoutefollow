@@ -16,6 +16,14 @@ export const loginSchema = z.object({
 export const addTeamMemberSchema = z.object({
   name: z.string().trim().min(2, "Name is required"),
   email: z.string().trim().email("Enter a valid email"),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Enter a valid email"),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
   password: z.string().min(8, "Use at least 8 characters"),
 });
 

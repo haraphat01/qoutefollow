@@ -22,14 +22,14 @@ export function RegisterForm() {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="name">Your name</Label>
-          <Input id="name" name="name" autoComplete="name" placeholder="Alex Morgan" required />
+          <Input id="name" name="name" autoComplete="name" placeholder="Alex Morgan" required defaultValue={state.values?.name} />
           {state.fieldErrors?.name ? (
             <p className="text-sm text-destructive">{state.fieldErrors.name[0]}</p>
           ) : null}
         </div>
         <div className="space-y-2">
           <Label htmlFor="businessName">Business name</Label>
-          <Input id="businessName" name="businessName" autoComplete="organization" placeholder="Morgan Home Services" required />
+          <Input id="businessName" name="businessName" autoComplete="organization" placeholder="Morgan Home Services" required defaultValue={state.values?.businessName} />
           {state.fieldErrors?.businessName ? (
             <p className="text-sm text-destructive">
               {state.fieldErrors.businessName[0]}
@@ -43,7 +43,7 @@ export function RegisterForm() {
           id="trade"
           name="trade"
           required
-          defaultValue="roofing"
+          defaultValue={state.values?.trade || "roofing"}
           className="form-select h-11 w-full border px-3 py-1 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30"
         >
           <option value="roofing">Roofing</option>
@@ -54,7 +54,7 @@ export function RegisterForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="email">Work email</Label>
-        <Input id="email" name="email" type="email" autoComplete="email" placeholder="you@yourbusiness.com" required />
+        <Input id="email" name="email" type="email" autoComplete="email" placeholder="you@yourbusiness.com" required defaultValue={state.values?.email} />
         {state.fieldErrors?.email ? (
           <p className="text-sm text-destructive">{state.fieldErrors.email[0]}</p>
         ) : null}

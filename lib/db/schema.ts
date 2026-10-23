@@ -100,6 +100,11 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
+  /**
+   * Defaults to now() so accounts that existed before verification was added
+   * count as verified. New signups and invites insert null explicitly.
+   */
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }).defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -132,6 +137,27 @@ export const sessions = pgTable("sessions", {
     .references(() => organizations.id, { onDelete: "cascade" }),
   tokenHash: text("token_hash").notNull().unique(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const authTokenTypeEnum = pgEnum("auth_token_type", [
+  "email_verification",
+  "password_reset",
+  "team_invite",
+]);
+
+/** Single-use emailed links. Only the SHA-256 of the token is stored. */
+export const authTokens = pgTable("auth_tokens", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  type: authTokenTypeEnum("type").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

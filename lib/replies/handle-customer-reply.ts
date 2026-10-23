@@ -14,6 +14,7 @@ import {
 import { cancelScheduledFollowUpsForQuote } from "@/lib/follow-ups/schedule";
 import { inboundReplyDomain } from "@/lib/email/reply-address";
 import { sendTransactionalEmail } from "@/lib/email/resend";
+import { emailCustomerReplyAlert } from "@/lib/email/team-alerts";
 import { appUrl } from "@/lib/billing/stripe";
 
 /**
@@ -30,7 +31,7 @@ async function forwardReplyToContractor(input: {
   summary: string | null;
 }) {
   if (!inboundReplyDomain()) {
-    return;
+    return null;
   }
 
   const [org] = await db
@@ -40,7 +41,7 @@ async function forwardReplyToContractor(input: {
     .limit(1);
 
   if (!org?.replyEmail) {
-    return;
+    return null;
   }
 
   const lines = [
@@ -65,6 +66,7 @@ async function forwardReplyToContractor(input: {
     text: lines.join("\n"),
     replyTo: input.fromEmail,
   });
+  return org.replyEmail;
 }
 
 export async function handleCustomerReply(input: {
@@ -175,7 +177,7 @@ export async function handleCustomerReply(input: {
     body: `${input.fromEmail} replied.${insightLine}${suggestionLine} Automation is paused until you update the quote.`,
   });
 
-  await forwardReplyToContractor({
+  const forwardedTo = await forwardReplyToContractor({
     organizationId: input.organizationId,
     quoteNumber: quote.quoteNumber,
     quoteId: input.quoteId,
@@ -183,9 +185,18 @@ export async function handleCustomerReply(input: {
     subject: input.subject ?? null,
     body: input.body,
     summary: classificationSummary,
-  }).catch(() => {
-    // The reply is recorded and the contractor is notified in-app either way.
-  });
+  }).catch(() => null);
+
+  // The reply is recorded and shown in-app even if these emails fail.
+  await emailCustomerReplyAlert({
+    organizationId: input.organizationId,
+    quoteId: input.quoteId,
+    quoteNumber: quote.quoteNumber,
+    customerEmail: fromAddress,
+    body: input.body,
+    summary: classificationSummary,
+    skipEmail: forwardedTo,
+  }).catch(() => undefined);
 
   return {
     handled: true as const,

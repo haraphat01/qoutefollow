@@ -8,6 +8,7 @@ import { requireSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { notifications, quoteInternalNotes, quotes } from "@/lib/db/schema";
 import { parseMentionedUserIds } from "@/lib/mentions/parse";
+import { emailMentions } from "@/lib/email/team-alerts";
 import { listOrganizationMembers } from "@/lib/queries/members";
 
 export async function addQuoteInternalNoteAction(
@@ -75,6 +76,16 @@ export async function addQuoteInternalNoteAction(
       body: body.slice(0, 280),
     });
   }
+
+  await emailMentions({
+    organizationId: session.organization.id,
+    quoteId: quote.id,
+    quoteNumber: quote.quoteNumber,
+    authorId: session.user.id,
+    authorName: session.user.name,
+    note: body,
+    mentionedUserIds,
+  });
 
   revalidatePath(`/quotes/${quoteId}`);
   return {};

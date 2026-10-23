@@ -170,6 +170,23 @@ Each quote detail page includes an **Email audit trail** (sent, delivered, bounc
 1. Endpoint: `https://app.yourdomain.com/api/webhooks/resend`
 2. Events: `email.delivered`, `email.bounced`, `email.complained`, `email.received` (inbound needs Resend Inbound on your domain).
 
+### Account & team emails
+
+With `RESEND_API_KEY` set, QuoteFollow also sends:
+
+| Email | Trigger |
+| --- | --- |
+| Confirm your email | Signup (the workspace stays locked until the link is clicked; link valid 24 h) |
+| Welcome | After a new owner confirms their email |
+| Reset your password | "Forgot password?" on the sign-in page (link valid 1 h, single use) |
+| Team invite | Owner adds a teammate under Settings → Team (teammate sets their own password; link valid 7 days) |
+| Customer replied | Inbound customer reply — sent to every teammate (the reply-to address gets the full forward instead) |
+| Mentioned you | Someone @mentions a teammate in a quote's team notes |
+
+Links in these emails use `NEXT_PUBLIC_APP_URL`, which Next.js bakes in **at build time** — set it in Coolify before building, then redeploy if you change it.
+
+Without `RESEND_API_KEY`, email verification is not enforced and teammates are added with a temporary password instead of an invite email. Accounts that existed before verification was added are treated as verified.
+
 ### Reply detection (inbound)
 
 1. In Resend, enable **Inbound** on a dedicated domain or subdomain (e.g. `reply.yourdomain.com`) and add the MX record it gives you.
