@@ -144,6 +144,20 @@ export function QuoteForm({
         </div>
       ) : null}
 
+      <div className="flex items-start gap-3 rounded-xl border border-primary/25 bg-primary/[0.04] p-4">
+        <input
+          id="sendNow"
+          type="checkbox"
+          name="sendNow"
+          defaultChecked
+          className="mt-0.5 size-4 shrink-0 accent-primary"
+        />
+        <div>
+          <Label htmlFor="sendNow" className="cursor-pointer">Email this quote to the customer now</Label>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">They get an itemized estimate from your business with a reply button. Follow-ups count from when it&apos;s sent. Untick to save it and send later.</p>
+        </div>
+      </div>
+
       <div className="flex items-start gap-3 rounded-xl border border-border/80 bg-muted/55 p-4">
         <input
           id="followUpsEnabled"

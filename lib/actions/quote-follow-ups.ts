@@ -12,6 +12,7 @@ import {
   getNextScheduledFollowUp,
 } from "@/lib/follow-ups/schedule";
 import { sendScheduledFollowUp } from "@/lib/follow-ups/send-follow-up";
+import { sendQuoteToCustomer } from "@/lib/quotes/send-quote";
 
 export async function sendNextFollowUpNowAction(
   quoteId: string,
@@ -117,4 +118,25 @@ export async function updateQuoteSequenceAction(
   revalidatePath(`/quotes/${quoteId}`);
   revalidatePath("/dashboard");
   return {};
+}
+
+export async function sendQuoteAction(quoteId: string): Promise<ActionState> {
+  const session = await requireSession().catch(() => null);
+  if (!session) {
+    return { error: "You must be signed in." };
+  }
+
+  const result = await sendQuoteToCustomer({
+    organizationId: session.organization.id,
+    quoteId,
+    userId: session.user.id,
+  });
+  if (!result.ok) {
+    return { error: result.reason };
+  }
+
+  revalidatePath(`/quotes/${quoteId}`);
+  revalidatePath("/quotes");
+  revalidatePath("/dashboard");
+  return { success: true };
 }

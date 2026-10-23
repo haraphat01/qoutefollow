@@ -14,6 +14,7 @@ import {
 } from "@/lib/follow-ups/schedule";
 import { createQuoteFromInput } from "@/lib/quotes/create-quote";
 import { parseLineItemsField } from "@/lib/quotes/line-items";
+import { sendQuoteToCustomer } from "@/lib/quotes/send-quote";
 import { replaceQuoteLineItems } from "@/lib/quotes/save-line-items";
 import {
   quoteSchema,
@@ -96,10 +97,21 @@ export async function createQuoteAction(
     return { error: "Could not save quote." };
   }
 
+  // The quote is saved either way; the page reports whether the email went out.
+  let sent: "1" | "failed" | null = null;
+  if (formData.get("sendNow") === "on") {
+    const result = await sendQuoteToCustomer({
+      organizationId: session.organization.id,
+      quoteId,
+      userId: session.user.id,
+    });
+    sent = result.ok ? "1" : "failed";
+  }
+
   revalidatePath("/quotes");
   revalidatePath("/dashboard");
   revalidatePath("/customers");
-  redirect(`/quotes/${quoteId}`);
+  redirect(sent ? `/quotes/${quoteId}?sent=${sent}` : `/quotes/${quoteId}`);
 }
 
 export async function updateQuoteStatusAction(

@@ -61,12 +61,17 @@ export async function getQuoteEmailAuditLog(
 
   return events.map((row) => {
     let detail: string | null = null;
+    let isQuoteEmail = false;
     if (row.payload) {
       try {
         const parsed = JSON.parse(row.payload) as {
           subject?: string;
           to?: string;
+          kind?: string;
         };
+        if (parsed.kind === "quote" && row.eventType === "sent") {
+          isQuoteEmail = true;
+        }
         if (parsed.subject) {
           detail = parsed.subject;
         } else if (parsed.to) {
@@ -84,7 +89,9 @@ export async function getQuoteEmailAuditLog(
       id: row.id,
       at: row.createdAt,
       kind: row.eventType,
-      label: `${EVENT_LABELS[row.eventType] ?? row.eventType}${day}`,
+      label: isQuoteEmail
+        ? "Quote emailed to customer"
+        : `${EVENT_LABELS[row.eventType] ?? row.eventType}${day}`,
       detail,
     } satisfies QuoteEmailAuditEntry;
   });

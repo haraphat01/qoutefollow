@@ -231,6 +231,8 @@ export const quotes = pgTable("quotes", {
   contactConfirmed: boolean("contact_confirmed").notNull().default(true),
   sequenceId: uuid("sequence_id").references(() => followUpSequences.id),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
+  /** Last time the estimate itself was emailed to the customer. */
+  sentAt: timestamp("sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

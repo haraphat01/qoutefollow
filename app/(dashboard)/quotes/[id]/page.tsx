@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { QuoteStatusBadge } from "@/components/quote-status-badge";
 import { QuoteEmailAudit } from "@/components/quotes/quote-email-audit";
 import { QuoteFollowUpControls } from "@/components/quotes/quote-follow-up-controls";
+import { SendQuoteButton } from "@/components/quotes/send-quote-button";
 import { QuoteInternalNotes } from "@/components/quotes/quote-internal-notes";
 import { QuoteSequenceSelect } from "@/components/quotes/quote-sequence-select";
 import { ReplyIntelligenceBanner } from "@/components/quotes/reply-intelligence-banner";
@@ -47,9 +48,12 @@ import { isExpirationUrgent, daysUntilExpiration } from "@/lib/follow-ups/expira
 
 export default async function QuoteDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ sent?: string }>;
 }) {
+  const { sent } = await searchParams;
   const session = await getSession();
   if (!session) {
     return null;
@@ -137,6 +141,16 @@ export default async function QuoteDetailPage({
           </Button>
         </div>
       </div>
+
+      {sent === "1" ? (
+        <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          Quote saved and emailed to {customer.email}. Follow-ups will count from now.
+        </p>
+      ) : sent === "failed" ? (
+        <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          The quote was saved, but the email to the customer didn&apos;t go out. Use <strong>Send quote to customer</strong> below to try again and see why.
+        </p>
+      ) : null}
 
       <ReplyIntelligenceBanner
         quoteId={quote.id}
@@ -257,6 +271,23 @@ export default async function QuoteDetailPage({
               </a>
             </CardContent>
           </Card>
+          {["draft", "pending", "paused"].includes(quote.status) ? (
+            <Card className="gap-0">
+              <CardHeader>
+                <CardTitle>Send quote</CardTitle>
+                <CardDescription className="mt-1">
+                  Email the itemized estimate from your business.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-3">
+                <SendQuoteButton
+                  quoteId={quote.id}
+                  customerEmail={customer.email}
+                  sentAt={quote.sentAt?.toISOString() ?? null}
+                />
+              </CardContent>
+            </Card>
+          ) : null}
           <Card className="gap-0">
             <CardHeader>
               <CardTitle>Follow-up actions</CardTitle>
