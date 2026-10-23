@@ -107,6 +107,7 @@ Set these on the **Coolify application** (and on the **scheduled worker** resour
 | `RESEND_WEBHOOK_SECRET` | Recommended | Resend webhook signing secret |
 | `OPENAI_API_KEY` | Recommended | PDF import + inbound reply classification |
 | `UNSUBSCRIBE_SECRET` | Recommended | Defaults to `CRON_SECRET` if unset |
+| `ADMIN_EMAILS` | Optional | Comma-separated emails that can open `/admin` (platform admin) |
 | `STRIPE_SECRET_KEY` | For billing | Live key in production |
 | `STRIPE_WEBHOOK_SECRET` | For billing | Stripe webhook signing secret |
 | `STRIPE_PRICE_STARTER` | For billing | Price ID ($39/mo) |
@@ -195,6 +196,20 @@ Without `RESEND_API_KEY`, email verification is not enforced and teammates are a
 
 Without `INBOUND_REPLY_DOMAIN`, replies go straight to the organization's reply-to email and QuoteFollow cannot pause automation automatically.
 3. Signing secret → `RESEND_WEBHOOK_SECRET`.
+
+---
+
+## Platform admin
+
+Users whose email is in `ADMIN_EMAILS` see an **Admin** item in the sidebar (`/admin`); everyone else gets a 404 there. From it you can:
+
+- Browse and search every user and workspace, with each one's quotes and activity.
+- **Ban** a user (signs them out and blocks sign-in and password resets), optionally suspending the workspace they own. **Unban** reverses it.
+- **Suspend** a workspace: every member is signed out, sign-in is blocked, and queued follow-ups wait until the suspension is lifted.
+- **Delete** a user. A sole owner's workspace is deleted with them; otherwise the next teammate becomes owner. **Delete workspace** removes all its member logins, data and PDFs and cancels its Stripe subscription.
+- Stop follow-ups or delete individual quotes, or stop every follow-up in a workspace.
+
+Admins can't ban, suspend or delete themselves or another admin. Every action is recorded under **Admin log**.
 
 ---
 

@@ -111,6 +111,8 @@ export async function getSession(): Promise<AppSession | null> {
       email: users.email,
       name: users.name,
       emailVerifiedAt: users.emailVerifiedAt,
+      bannedAt: users.bannedAt,
+      suspendedAt: organizations.suspendedAt,
       role: organizationMembers.role,
       organizationId: organizations.id,
       organizationName: organizations.name,
@@ -132,11 +134,16 @@ export async function getSession(): Promise<AppSession | null> {
     )
     .limit(1);
 
-  if (!row || row.expiresAt < now) {
+  // Bans and suspensions also delete sessions; this catches any that remain.
+  if (!row || row.expiresAt < now || row.bannedAt || row.suspendedAt) {
     if (row) {
       await db.delete(sessions).where(eq(sessions.id, row.sessionId));
     }
-    cookieStore.delete(SESSION_COOKIE);
+    try {
+      cookieStore.delete(SESSION_COOKIE);
+    } catch {
+      // Pages can't modify cookies; /api/auth/clear-session removes it.
+    }
     return null;
   }
 
@@ -156,6 +163,28 @@ export async function getSession(): Promise<AppSession | null> {
     },
     role: row.role,
   };
+}
+
+export const ACCOUNT_SUSPENDED_ERROR =
+  "This account has been suspended. Contact support if you think this is a mistake.";
+
+/** True when an admin banned the user or suspended their workspace. */
+export async function isAccountBlocked(userId: string) {
+  const [row] = await db
+    .select({
+      bannedAt: users.bannedAt,
+      suspendedAt: organizations.suspendedAt,
+    })
+    .from(users)
+    .leftJoin(organizationMembers, eq(organizationMembers.userId, users.id))
+    .leftJoin(
+      organizations,
+      eq(organizations.id, organizationMembers.organizationId),
+    )
+    .where(eq(users.id, userId))
+    .orderBy(asc(organizationMembers.createdAt))
+    .limit(1);
+  return Boolean(row?.bannedAt || row?.suspendedAt);
 }
 
 /** Verification needs working email; without Resend it is not enforced. */

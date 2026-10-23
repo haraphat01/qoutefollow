@@ -87,6 +87,8 @@ export const organizations = pgTable("organizations", {
     .notNull()
     .default("none"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  /** Set by a platform admin: members can't sign in and follow-ups stop. */
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -105,6 +107,9 @@ export const users = pgTable("users", {
    * count as verified. New signups and invites insert null explicitly.
    */
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }).defaultNow(),
+  /** Set by a platform admin: the user can't sign in. */
+  bannedAt: timestamp("banned_at", { withTimezone: true }),
+  banReason: text("ban_reason"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -381,6 +386,23 @@ export const activityLogs = pgTable("activity_logs", {
   entityId: uuid("entity_id"),
   action: text("action").notNull(),
   metadata: text("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** Audit trail of platform-admin actions; survives deletion of the target. */
+export const adminActions = pgTable("admin_actions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  adminUserId: uuid("admin_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  adminEmail: text("admin_email").notNull(),
+  action: text("action").notNull(),
+  targetType: text("target_type").notNull(),
+  targetId: uuid("target_id"),
+  targetLabel: text("target_label").notNull(),
+  details: text("details"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

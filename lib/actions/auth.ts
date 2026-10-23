@@ -19,10 +19,12 @@ import {
   markEmailVerified,
 } from "@/lib/auth/account-flows";
 import {
+  ACCOUNT_SUSPENDED_ERROR,
   createSession,
   destroyAllSessionsForUser,
   emailVerificationRequired,
   getSession,
+  isAccountBlocked,
 } from "@/lib/auth/session";
 import {
   consumeAuthToken,
@@ -196,6 +198,10 @@ export async function loginAction(
     };
   }
 
+  if (await isAccountBlocked(user.id)) {
+    return { error: ACCOUNT_SUSPENDED_ERROR, values: echo(formData, ["email"]) };
+  }
+
   if (!(await createSessionIfMember(user.id))) {
     return { error: NO_WORKSPACE_ERROR, values: echo(formData, ["email"]) };
   }
@@ -248,7 +254,11 @@ export async function forgotPasswordAction(
     .limit(1);
 
   // Same response whether or not the account exists, so emails can't be probed.
-  if (user && !(await issuedRecently(user.id, "password_reset"))) {
+  if (
+    user &&
+    !(await isAccountBlocked(user.id)) &&
+    !(await issuedRecently(user.id, "password_reset"))
+  ) {
     try {
       await sendPasswordResetEmail(user);
     } catch {
@@ -282,6 +292,9 @@ export async function resetPasswordAction(
     return {
       error: "This link is invalid or has expired. Request a new one.",
     };
+  }
+  if (await isAccountBlocked(token.userId)) {
+    return { error: ACCOUNT_SUSPENDED_ERROR };
   }
 
   await db

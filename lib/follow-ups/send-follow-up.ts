@@ -115,6 +115,18 @@ export async function sendScheduledFollowUp(
     return { ok: false, reason: "Quote is not eligible for follow-ups." };
   }
 
+  if (organization.suspendedAt) {
+    // Stays queued so sending resumes if an admin lifts the suspension.
+    await db
+      .update(scheduledFollowUps)
+      .set({
+        scheduledFor: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+        lastError: "Paused: workspace suspended",
+      })
+      .where(eq(scheduledFollowUps.id, scheduled.id));
+    return { ok: false, reason: "This workspace is suspended." };
+  }
+
   const entitlements = resolveEntitlements({
     plan: organization.subscriptionPlan,
     status: organization.subscriptionStatus,

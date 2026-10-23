@@ -1,6 +1,6 @@
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, rm, writeFile } from "fs/promises";
 import path from "path";
-import { get, put } from "@vercel/blob";
+import { del, get, put } from "@vercel/blob";
 
 const UPLOAD_ROOT = path.join(process.cwd(), "storage", "uploads");
 const BLOB_PREFIX = "blob:";
@@ -70,4 +70,22 @@ export async function readOrganizationUpload(
     : path.join(/*turbopackIgnore: true*/ process.cwd(), storagePath);
 
   return readFile(absolutePath);
+}
+
+/** Remove every stored PDF of a deleted workspace. */
+export async function deleteOrganizationUploads(
+  organizationId: string,
+  storagePaths: string[],
+) {
+  const blobPaths = storagePaths
+    .filter((storagePath) => storagePath.startsWith(BLOB_PREFIX))
+    .map((storagePath) => storagePath.slice(BLOB_PREFIX.length));
+  if (blobPaths.length > 0 && blobConfigured()) {
+    await del(blobPaths, { token: process.env.BLOB_READ_WRITE_TOKEN });
+  }
+
+  await rm(path.join(UPLOAD_ROOT, organizationId), {
+    recursive: true,
+    force: true,
+  });
 }

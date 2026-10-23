@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import { isAdminEmail } from "@/lib/auth/admin";
 import { getSession } from "@/lib/auth/session";
 
 export const instant = false;
@@ -12,11 +13,16 @@ export default async function DashboardLayout({
 }) {
   const session = await getSession();
   if (!session) {
-    redirect("/login");
+    // Clears a stale cookie first; otherwise the proxy bounces /login back here.
+    redirect("/api/auth/clear-session");
   }
   if (!session.user.emailVerified) {
     redirect("/verify-email");
   }
 
-  return <AppShell session={session}>{children}</AppShell>;
+  return (
+    <AppShell session={session} isAdmin={isAdminEmail(session.user.email)}>
+      {children}
+    </AppShell>
+  );
 }

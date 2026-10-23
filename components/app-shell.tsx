@@ -12,6 +12,7 @@ import {
   LogOut,
   Mail,
   PanelsTopLeft,
+  ShieldCheck,
   Users,
   UsersRound,
 } from "lucide-react";
@@ -31,6 +32,8 @@ const NAV = [
   { href: "/settings/billing", label: "Billing", icon: CreditCard },
 ] as const;
 
+const ADMIN_NAV = { href: "/admin", label: "Admin", icon: ShieldCheck } as const;
+
 function isActiveNavItem(pathname: string, href: string) {
   if (href === "/quotes") {
     return pathname === href || (pathname.startsWith(`${href}/`) && !pathname.startsWith("/quotes/import"));
@@ -41,12 +44,15 @@ function isActiveNavItem(pathname: string, href: string) {
 
 export function AppShell({
   session,
+  isAdmin,
   children,
 }: {
   session: AppSession;
+  isAdmin: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const navItems = isAdmin ? [...NAV, ADMIN_NAV] : NAV;
   const initials = session.user.name
     .split(/\s+/)
     .map((part) => part[0])
@@ -87,7 +93,7 @@ export function AppShell({
           <p className="hidden px-3 pb-2 pt-3 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-white/40 lg:block">
             Workspace
           </p>
-          {NAV.map((item) => {
+          {navItems.map((item) => {
             const active = isActiveNavItem(pathname, item.href);
 
             return (
@@ -156,7 +162,7 @@ export function AppShell({
               {session.organization.name}
             </p>
             <p className="truncate text-sm font-semibold tracking-tight">
-              {NAV.find((item) => isActiveNavItem(pathname, item.href))?.label ?? "Workspace"}
+              {navItems.find((item) => isActiveNavItem(pathname, item.href))?.label ?? "Workspace"}
             </p>
           </div>
           <div className="flex items-center gap-3">
