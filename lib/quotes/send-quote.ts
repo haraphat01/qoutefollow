@@ -116,6 +116,7 @@ export async function sendQuoteToCustomer(input: {
   let providerMessageId: string | null;
   try {
     providerMessageId = await sendTransactionalEmail({
+      fromName: organization.name,
       to: customer.email,
       subject: email.subject,
       text: email.text,

@@ -83,3 +83,13 @@ describe("email compliance helpers", () => {
     expect(email.html).toContain("https://app.example.com/q/token123");
   });
 });
+
+describe("customer-facing sender name", () => {
+  it("keeps the verified address but shows the business name", async () => {
+    process.env.EMAIL_FROM = "QuoteFollow <onboarding@qoutefollow.com>";
+    const { fromAddressWithName } = await import("@/lib/email/resend");
+    expect(fromAddressWithName("Pencil Digital Services")).toBe('"Pencil Digital Services" <onboarding@qoutefollow.com>');
+    expect(fromAddressWithName('Bad "Name" <x@evil.com>\r\nBcc: a@b.c')).toBe('"Bad Name x@evil.com Bcc: a@b.c" <onboarding@qoutefollow.com>');
+    expect(fromAddressWithName(null)).toBe("QuoteFollow <onboarding@qoutefollow.com>");
+  });
+});

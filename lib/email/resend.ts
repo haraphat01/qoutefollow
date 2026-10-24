@@ -12,7 +12,25 @@ export function getEmailFromAddress() {
   return process.env.EMAIL_FROM ?? "QuoteFollow <onboarding@resend.dev>";
 }
 
+/**
+ * EMAIL_FROM with its display name swapped, e.g. "Summit Roofing
+ * <quotes@yourdomain.com>", so customers see the business they asked for a
+ * quote rather than "QuoteFollow". The address (and its verified domain)
+ * stays the same.
+ */
+export function fromAddressWithName(displayName: string | null | undefined) {
+  const from = getEmailFromAddress();
+  const name = displayName?.replace(/[\r\n]+/g, " ").replace(/["<>\\]/g, "").replace(/\s+/g, " ").trim();
+  if (!name) {
+    return from;
+  }
+  const address = from.match(/<([^>]+)>/)?.[1] ?? from.trim();
+  return `"${name}" <${address}>`;
+}
+
 export async function sendTransactionalEmail(input: {
+  /** Display name to send as; defaults to EMAIL_FROM's own name. */
+  fromName?: string | null;
   to: string;
   subject: string;
   text: string;
@@ -24,7 +42,7 @@ export async function sendTransactionalEmail(input: {
 }) {
   const resend = getResend();
   const result = await resend.emails.send({
-    from: getEmailFromAddress(),
+    from: fromAddressWithName(input.fromName),
     to: input.to,
     subject: input.subject,
     text: input.text,

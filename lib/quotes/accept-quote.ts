@@ -145,6 +145,7 @@ export async function acceptQuote(input: {
           acceptedAt: now.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: organization.sendTimezone }),
         });
         await sendTransactionalEmail({
+          fromName: organization.name,
           to: customer.email,
           subject: confirmation.subject,
           text: confirmation.text,

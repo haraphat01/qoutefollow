@@ -234,6 +234,7 @@ export async function sendScheduledFollowUp(
 
   try {
     const providerMessageId = await sendTransactionalEmail({
+      fromName: organization.name,
       to: customer.email,
       subject,
       text,
