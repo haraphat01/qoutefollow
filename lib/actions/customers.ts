@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
-import { activityLogs, customers } from "@/lib/db/schema";
+import { activityLogs, customers, quotes } from "@/lib/db/schema";
 import { customerSchema } from "@/lib/validations/customer";
 
 import type { ActionState } from "./auth";
@@ -144,4 +144,51 @@ export async function updateCustomerAction(
   revalidatePath(`/customers/${customerId}`);
   revalidatePath("/quotes");
   return { success: true };
+}
+
+/**
+ * Owners only. Deletes the customer and all of their quotes (with each quote's
+ * items, follow-ups, emails and notes), since quotes can't exist without one.
+ */
+export async function deleteCustomerAction(customerId: string): Promise<ActionState> {
+  const session = await requireSession().catch(() => null);
+  if (!session) {
+    return { error: "You must be signed in." };
+  }
+  if (session.role !== "owner") {
+    return { error: "Only the account owner can delete customers." };
+  }
+
+  const [customer] = await db
+    .select({ id: customers.id, name: customers.name, email: customers.email })
+    .from(customers)
+    .where(and(eq(customers.id, customerId), eq(customers.organizationId, session.organization.id)))
+    .limit(1);
+  if (!customer) {
+    return { error: "Customer not found." };
+  }
+
+  const deletedQuotes = await db.transaction(async (tx) => {
+    const removed = await tx
+      .delete(quotes)
+      .where(and(eq(quotes.customerId, customer.id), eq(quotes.organizationId, session.organization.id)))
+      .returning({ id: quotes.id });
+    await tx.delete(customers).where(eq(customers.id, customer.id));
+    return removed.length;
+  });
+
+  await db.insert(activityLogs).values({
+    organizationId: session.organization.id,
+    userId: session.user.id,
+    entityType: "customer",
+    entityId: customer.id,
+    action: "deleted",
+    metadata: JSON.stringify({ name: customer.name, email: customer.email, quotes: deletedQuotes }),
+  });
+
+  revalidatePath("/customers");
+  revalidatePath("/quotes");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  redirect("/customers");
 }

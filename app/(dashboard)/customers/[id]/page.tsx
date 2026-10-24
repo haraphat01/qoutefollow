@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, FileText, Plus } from "lucide-react";
 
 import { CustomerForm } from "@/components/customers/customer-form";
+import { DeleteCustomerButton } from "@/components/customers/delete-customer-button";
 import { QuoteStatusBadge } from "@/components/quote-status-badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -125,6 +126,25 @@ export default async function CustomerDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      {session.role === "owner" ? (
+        <Card className="gap-0 border-destructive/25">
+          <CardHeader>
+            <CardTitle>Delete customer</CardTitle>
+            <CardDescription className="mt-1">
+              Removes {customer.name} and every quote you&apos;ve sent them. Only the account owner can do this.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <DeleteCustomerButton
+              customerId={customer.id}
+              customerName={customer.name}
+              quoteCount={customerQuotes.length}
+              acceptedCount={customerQuotes.filter((quote) => quote.status === "accepted").length}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }
