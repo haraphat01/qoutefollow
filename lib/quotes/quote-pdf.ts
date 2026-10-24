@@ -218,7 +218,7 @@ export async function buildQuotePdf(
     w.page.drawRectangle({ x: left, y: w.y - 34, width: contentWidth, height: 46, color: PANEL, borderColor: BRAND, borderWidth: 0.75 });
     w.text("ACCEPTED", left + 12, { size: 8, font: bold, color: BRAND });
     w.text(
-      `Signed by ${quote.acceptedName} on ${formatDate(quote.acceptedAt)}${multiple && document.acceptedOptionIndex !== null ? ` · ${document.options[document.acceptedOptionIndex].name}` : ""}`,
+      `Signed by ${quote.acceptedName} on ${quote.acceptedAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: organization.sendTimezone })}${multiple && document.acceptedOptionIndex !== null ? ` · ${document.options[document.acceptedOptionIndex].name}` : ""}`,
       left + 12,
       { size: 10, font: bold, y: w.y - 16 },
     );
