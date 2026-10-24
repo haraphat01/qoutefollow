@@ -1,4 +1,5 @@
 import { processDueFollowUps } from "@/lib/follow-ups/process-due";
+import { sendDueWeeklySummaries } from "@/lib/reports/weekly-summary";
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -9,5 +10,6 @@ export async function GET(request: Request) {
   }
 
   const result = await processDueFollowUps();
-  return Response.json({ ok: true, ...result });
+  const weeklySummaries = await sendDueWeeklySummaries();
+  return Response.json({ ok: true, ...result, weeklySummaries });
 }

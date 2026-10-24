@@ -25,6 +25,7 @@ export const PRIVATE_PATHS = [
   "/verify-email",
   "/reset-password",
   "/forgot-password",
+  "/q/",
 ];
 
 export const FAQ = [

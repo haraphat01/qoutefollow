@@ -1,18 +1,32 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { customers, quotes } from "@/lib/db/schema";
+import { customers, quotes, users } from "@/lib/db/schema";
 
-export async function listQuotes(organizationId: string) {
+export async function listQuotes(
+  organizationId: string,
+  filter: { assignedTo?: string | null } = {},
+) {
   return db
     .select({
       quote: quotes,
       customerName: customers.name,
       customerEmail: customers.email,
+      assigneeName: users.name,
     })
     .from(quotes)
     .innerJoin(customers, eq(quotes.customerId, customers.id))
-    .where(eq(quotes.organizationId, organizationId))
+    .leftJoin(users, eq(users.id, quotes.assignedUserId))
+    .where(
+      and(
+        eq(quotes.organizationId, organizationId),
+        filter.assignedTo === undefined
+          ? undefined
+          : filter.assignedTo === null
+            ? isNull(quotes.assignedUserId)
+            : eq(quotes.assignedUserId, filter.assignedTo),
+      ),
+    )
     .orderBy(desc(quotes.updatedAt));
 }
 

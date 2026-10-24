@@ -4,7 +4,8 @@ import { useActionState } from "react";
 
 import { updateQuoteAction } from "@/lib/actions/quotes";
 import type { ActionState } from "@/lib/actions/auth";
-import { LineItemsEditor, type LineItemDraft } from "@/components/quotes/line-items-editor";
+import { QuotePricingEditor, type PriceBookOption } from "@/components/quotes/line-items-editor";
+import type { PricingDraft } from "@/lib/quotes/pricing";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,10 +15,15 @@ const initialState: ActionState = {};
 
 export function QuoteEditForm({
   quote,
+  priceBook,
+  jobTypes,
 }: {
+  priceBook: PriceBookOption[];
+  jobTypes: string[];
   quote: {
     id: string;
-    lineItems: LineItemDraft[];
+    pricing: PricingDraft;
+    jobType: string;
     jobDescription: string;
     quoteDate: string;
     expiresAt: string;
@@ -36,16 +42,27 @@ export function QuoteEditForm({
         </p>
       ) : null}
 
-      <div className="space-y-2">
-        <Label htmlFor="jobDescription">Job description</Label>
-        <Textarea id="jobDescription" name="jobDescription" rows={3} required defaultValue={quote.jobDescription} />
-        {state.fieldErrors?.jobDescription ? (
-          <p className="text-sm text-destructive">{state.fieldErrors.jobDescription[0]}</p>
-        ) : null}
+      <div className="grid gap-4 sm:grid-cols-[1fr_14rem]">
+        <div className="space-y-2">
+          <Label htmlFor="jobDescription">Job description</Label>
+          <Textarea id="jobDescription" name="jobDescription" rows={3} required defaultValue={quote.jobDescription} />
+          {state.fieldErrors?.jobDescription ? (
+            <p className="text-sm text-destructive">{state.fieldErrors.jobDescription[0]}</p>
+          ) : null}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="jobType">Job type <span className="font-normal text-muted-foreground">(optional)</span></Label>
+          <Input id="jobType" name="jobType" list="job-type-suggestions" maxLength={80} defaultValue={quote.jobType} />
+          <datalist id="job-type-suggestions">
+            {jobTypes.map((type) => (
+              <option key={type} value={type} />
+            ))}
+          </datalist>
+        </div>
       </div>
       <div className="space-y-2">
-        <p className="text-sm font-medium">Items</p>
-        <LineItemsEditor initialItems={quote.lineItems} error={state.fieldErrors?.lineItems?.[0]} />
+        <p className="text-sm font-medium">Pricing</p>
+        <QuotePricingEditor initial={quote.pricing} priceBook={priceBook} error={state.fieldErrors?.pricing?.[0]} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">

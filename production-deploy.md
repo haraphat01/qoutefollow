@@ -199,6 +199,14 @@ Without `INBOUND_REPLY_DOMAIN`, replies go straight to the organization's reply-
 
 ---
 
+## Quotes customers can accept online
+
+- Every sent quote links to `/q/<token>`, a public page where the customer compares Good/Better/Best options, downloads the PDF, and accepts by typing their name. Acceptance records name, time, IP and browser, stops follow-ups, alerts owners and the assignee, and emails the customer a signed PDF.
+- Quote emails attach a PDF; follow-ups link to the online quote. Uploaded logos (Settings → Quoting) appear on both and are served from `/api/logo/<orgId>`.
+- **Email opens and clicks:** in Resend, open **Domains → your domain → Configuration** and turn on open and click tracking (Resend asks for a tracking subdomain). The webhook already listens for `email.opened` and `email.clicked`. Online quote views are tracked without this.
+- **Weekly summary:** the follow-up worker (or the cron route) also sends each workspace's owners a summary on Monday from 8am in its send time zone. Owners can switch it off or send a preview under Settings → Email.
+- Exports: `/api/export/quotes` and `/api/export/customers` (signed-in members only).
+
 ## Platform admin
 
 Users whose email is in `ADMIN_EMAILS` see an **Admin** item in the sidebar (`/admin`); everyone else gets a 404 there. From it you can:

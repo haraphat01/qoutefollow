@@ -15,7 +15,7 @@ import { db } from "@/lib/db";
 import { quoteDocuments } from "@/lib/db/schema";
 import { processQuoteDocument } from "@/lib/pdf/process-document";
 import { createQuoteFromInput } from "@/lib/quotes/create-quote";
-import { parseLineItemsField } from "@/lib/quotes/line-items";
+import { parsePricingField } from "@/lib/quotes/pricing";
 import { saveOrganizationUpload } from "@/lib/storage/uploads";
 import { confirmImportedQuoteSchema } from "@/lib/validations/quote-import";
 
@@ -109,12 +109,12 @@ export async function confirmImportedQuoteAction(
     contactConfirmed: formData.get("contactConfirmed") === "on",
   });
 
-  const lineItems = parseLineItemsField(formData.get("lineItems"));
-  if (!parsed.success || "error" in lineItems) {
+  const pricing = parsePricingField(formData.get("pricing"));
+  if (!parsed.success || "error" in pricing) {
     return {
       fieldErrors: {
         ...(parsed.success ? {} : parsed.error.flatten().fieldErrors),
-        ...("error" in lineItems ? { lineItems: [lineItems.error] } : {}),
+        ...("error" in pricing ? { pricing: [pricing.error] } : {}),
       },
     };
   }
@@ -147,7 +147,7 @@ export async function confirmImportedQuoteAction(
       userId: session.user.id,
       customerName: data.customerName,
       customerEmail: data.customerEmail,
-      lineItems: lineItems.items,
+      pricing: pricing.pricing,
       jobDescription: data.jobDescription,
       quoteDate: parseDateInput(data.quoteDate),
       expiresAt: data.expiresAt ? parseDateInput(data.expiresAt, "end") : null,

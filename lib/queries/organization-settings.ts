@@ -11,6 +11,7 @@ export async function getOrganizationEmailSettings(organizationId: string) {
       mailingAddress: organizations.mailingAddress,
       sendTimezone: organizations.sendTimezone,
       replyEmail: organizations.replyEmail,
+      weeklySummaryEnabled: organizations.weeklySummaryEnabled,
     })
     .from(organizations)
     .where(eq(organizations.id, organizationId))

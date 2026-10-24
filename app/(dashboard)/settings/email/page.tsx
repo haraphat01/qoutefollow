@@ -5,6 +5,7 @@ import { MailingComplianceForm } from "@/components/settings/mailing-compliance-
 import { SendTimezoneForm } from "@/components/settings/send-timezone-form";
 import { DEFAULT_SEND_TIMEZONE } from "@/lib/follow-ups/send-window";
 import { SuppressionList } from "@/components/settings/suppression-list";
+import { WeeklySummarySettings } from "@/components/settings/weekly-summary-settings";
 import {
   Card,
   CardContent,
@@ -117,6 +118,20 @@ export default async function EmailDeliverabilityPage() {
           <MailingComplianceForm
             mailingAddress={settings?.mailingAddress ?? null}
             isOwner={isOwner}
+          />
+        </CardContent>
+      </Card>
+
+      <Card className="gap-0">
+        <CardHeader>
+          <CardTitle>Weekly summary</CardTitle>
+          <CardDescription>A Monday-morning snapshot of how your quotes are doing.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <WeeklySummarySettings
+            enabled={settings?.weeklySummaryEnabled ?? true}
+            isOwner={isOwner}
+            email={session.user.email}
           />
         </CardContent>
       </Card>

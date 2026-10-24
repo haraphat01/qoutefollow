@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import { confirmImportedQuoteAction } from "@/lib/actions/pdf-import";
 import type { ActionState } from "@/lib/actions/auth";
 import type { ExtractedQuoteFields } from "@/lib/ai/extract-quote-fields";
-import { LineItemsEditor } from "@/components/quotes/line-items-editor";
+import { QuotePricingEditor } from "@/components/quotes/line-items-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,16 +88,25 @@ export function ImportConfirmForm({
           {state.fieldErrors?.jobDescription ? <p className="text-sm text-destructive">{state.fieldErrors.jobDescription[0]}</p> : null}
         </div>
         <div className="space-y-2">
-          <p className="text-sm font-medium">Items</p>
-          <LineItemsEditor
-            initialItems={[
-              {
-                description: (fields.jobDescription ?? "Estimate total").slice(0, 300),
-                quantity: 1,
-                unitPrice: fields.amount ?? "",
-              },
-            ]}
-            error={state.fieldErrors?.lineItems?.[0]}
+          <p className="text-sm font-medium">Pricing</p>
+          <QuotePricingEditor
+            initial={{
+              options: [
+                {
+                  name: null,
+                  items: [
+                    {
+                      description: (fields.jobDescription ?? "Estimate total").slice(0, 300),
+                      quantity: 1,
+                      unitPrice: fields.amount ?? "",
+                    },
+                  ],
+                },
+              ],
+              discount: null,
+              taxRate: 0,
+            }}
+            error={state.fieldErrors?.pricing?.[0]}
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">

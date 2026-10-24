@@ -13,16 +13,25 @@ import {
   syncQuoteFollowUpEligibility,
 } from "@/lib/follow-ups/schedule";
 import { createQuoteFromInput } from "@/lib/quotes/create-quote";
-import { parseLineItemsField } from "@/lib/quotes/line-items";
+import { resolveAssignee } from "@/lib/quotes/assignee";
+import { parsePricingField } from "@/lib/quotes/pricing";
 import { sendQuoteToCustomer } from "@/lib/quotes/send-quote";
-import { replaceQuoteLineItems } from "@/lib/quotes/save-line-items";
+import { pricingColumns, saveQuotePricing } from "@/lib/quotes/save-line-items";
 import {
   quoteSchema,
   quoteStatusSchema,
   updateQuoteSchema,
 } from "@/lib/validations/quote";
 
-import { parseDateInput } from "@/lib/format";
+import { formatMoney, parseDateInput } from "@/lib/format";
+import { appUrl } from "@/lib/billing/stripe";
+import {
+  accountEmailsEnabled,
+  buildQuoteAssignedEmail,
+  sendAccountEmail,
+} from "@/lib/email/account-emails";
+import { listOrganizationMembers } from "@/lib/queries/members";
+import { loadQuoteDocument } from "@/lib/quotes/quote-document";
 
 import type { ActionState } from "./auth";
 
@@ -52,12 +61,12 @@ export async function createQuoteAction(
     sequenceId: formData.get("sequenceId") || undefined,
   });
 
-  const lineItems = parseLineItemsField(formData.get("lineItems"));
-  if (!parsed.success || "error" in lineItems) {
+  const pricing = parsePricingField(formData.get("pricing"));
+  if (!parsed.success || "error" in pricing) {
     return {
       fieldErrors: {
         ...(parsed.success ? {} : parsed.error.flatten().fieldErrors),
-        ...("error" in lineItems ? { lineItems: [lineItems.error] } : {}),
+        ...("error" in pricing ? { pricing: [pricing.error] } : {}),
       },
     };
   }
@@ -72,7 +81,11 @@ export async function createQuoteAction(
       customerId: data.customerId,
       customerName: data.customerName,
       customerEmail: data.customerEmail,
-      lineItems: lineItems.items,
+      pricing: pricing.pricing,
+      jobType: String(formData.get("jobType") ?? "").slice(0, 80),
+      assignedUserId:
+        (await resolveAssignee(session.organization.id, formData.get("assignedUserId"))) ??
+        session.user.id,
       jobDescription: data.jobDescription,
       quoteDate: parseDateInput(data.quoteDate),
       expiresAt: data.expiresAt ? parseDateInput(data.expiresAt, "end") : null,
@@ -193,12 +206,12 @@ export async function updateQuoteAction(
     followUpsEnabled: parseFollowUpsEnabled(formData.get("followUpsEnabled")),
   });
 
-  const lineItems = parseLineItemsField(formData.get("lineItems"));
-  if (!parsed.success || "error" in lineItems) {
+  const pricing = parsePricingField(formData.get("pricing"));
+  if (!parsed.success || "error" in pricing) {
     return {
       fieldErrors: {
         ...(parsed.success ? {} : parsed.error.flatten().fieldErrors),
-        ...("error" in lineItems ? { lineItems: [lineItems.error] } : {}),
+        ...("error" in pricing ? { pricing: [pricing.error] } : {}),
       },
     };
   }
@@ -218,6 +231,11 @@ export async function updateQuoteAction(
   if (!existing) {
     return { error: "Quote not found." };
   }
+  if (existing.acceptedAt) {
+    return {
+      error: "The customer has signed this quote, so it can't be changed. Duplicate it to make a new version.",
+    };
+  }
 
   const expiresAt = data.expiresAt
     ? parseDateInput(data.expiresAt, "end")
@@ -230,7 +248,8 @@ export async function updateQuoteAction(
     await tx
       .update(quotes)
       .set({
-        amount: lineItems.total.toFixed(2),
+        ...pricingColumns(pricing.pricing, pricing.amount),
+        jobType: String(formData.get("jobType") ?? "").trim().slice(0, 80) || null,
         jobDescription: data.jobDescription,
         quoteDate: parseDateInput(data.quoteDate),
         expiresAt,
@@ -240,10 +259,10 @@ export async function updateQuoteAction(
         updatedAt: new Date(),
       })
       .where(eq(quotes.id, existing.id));
-    await replaceQuoteLineItems(tx, {
+    await saveQuotePricing(tx, {
       organizationId: session.organization.id,
       quoteId: existing.id,
-      items: lineItems.items,
+      pricing: pricing.pricing,
     });
   });
 
@@ -263,8 +282,8 @@ export async function updateQuoteAction(
     action: "updated",
     metadata: JSON.stringify({
       followUpsEnabled: data.followUpsEnabled,
-      items: lineItems.items.length,
-      amount: lineItems.total.toFixed(2),
+      options: pricing.pricing.options.length,
+      amount: pricing.amount.toFixed(2),
     }),
   });
 
@@ -272,4 +291,103 @@ export async function updateQuoteAction(
   revalidatePath("/quotes");
   revalidatePath("/dashboard");
   redirect(`/quotes/${existing.id}`);
+}
+
+/** Copy a quote's job and pricing into a new draft and open it for editing. */
+export async function duplicateQuoteAction(quoteId: string): Promise<ActionState> {
+  const session = await requireSession().catch(() => null);
+  if (!session) {
+    return { error: "You must be signed in." };
+  }
+  const document = await loadQuoteDocument({ organizationId: session.organization.id, quoteId });
+  if (!document) {
+    return { error: "Quote not found." };
+  }
+
+  const { quote } = document;
+  let copyId: string;
+  try {
+    const copy = await createQuoteFromInput({
+      organizationId: session.organization.id,
+      userId: session.user.id,
+      customerId: quote.customerId,
+      pricing: {
+        options: document.options.map((option) => ({
+          name: option.name,
+          items: option.items.map(({ description, quantity, unitPrice }) => ({ description, quantity, unitPrice })),
+        })),
+        discount: document.discount,
+        taxRate: document.taxRate,
+      },
+      jobType: quote.jobType,
+      assignedUserId: session.user.id,
+      jobDescription: quote.jobDescription,
+      quoteDate: new Date(),
+      expiresAt: null,
+      notes: quote.notes,
+      status: "draft",
+      followUpsEnabled: quote.followUpsEnabled,
+      contactConfirmed: true,
+      sequenceId: quote.sequenceId,
+    });
+    copyId = copy.id;
+  } catch {
+    return { error: "Could not duplicate this quote." };
+  }
+
+  revalidatePath("/quotes");
+  redirect(`/quotes/${copyId}/edit`);
+}
+
+export async function assignQuoteAction(
+  quoteId: string,
+  userId: string | null,
+): Promise<ActionState> {
+  const session = await requireSession().catch(() => null);
+  if (!session) {
+    return { error: "You must be signed in." };
+  }
+  const document = await loadQuoteDocument({ organizationId: session.organization.id, quoteId });
+  if (!document) {
+    return { error: "Quote not found." };
+  }
+  const assignee = userId ? await resolveAssignee(session.organization.id, userId) : null;
+  if (userId && !assignee) {
+    return { error: "That person isn't on your team." };
+  }
+
+  await db
+    .update(quotes)
+    .set({ assignedUserId: assignee, updatedAt: new Date() })
+    .where(eq(quotes.id, quoteId));
+  await db.insert(activityLogs).values({
+    organizationId: session.organization.id,
+    userId: session.user.id,
+    entityType: "quote",
+    entityId: quoteId,
+    action: "assigned",
+    metadata: JSON.stringify({ to: assignee }),
+  });
+
+  if (assignee && assignee !== session.user.id && accountEmailsEnabled()) {
+    const members = await listOrganizationMembers(session.organization.id);
+    const member = members.find((item) => item.id === assignee);
+    if (member?.emailVerifiedAt) {
+      await sendAccountEmail(
+        member.email,
+        buildQuoteAssignedEmail({
+          assignerName: session.user.name,
+          quoteNumber: document.quote.quoteNumber,
+          customerName: document.customer.name,
+          total: formatMoney(document.quote.amount),
+          url: appUrl(`/quotes/${quoteId}`),
+        }),
+      ).catch(() => undefined);
+    }
+  }
+
+  revalidatePath(`/quotes/${quoteId}`);
+  revalidatePath("/quotes");
+  revalidatePath("/dashboard");
+  return { success: true };
 }

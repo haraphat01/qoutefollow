@@ -20,6 +20,7 @@ export async function sendTransactionalEmail(input: {
   html?: string;
   replyTo?: string | null;
   headers?: Record<string, string>;
+  attachments?: { filename: string; content: Buffer }[];
 }) {
   const resend = getResend();
   const result = await resend.emails.send({
@@ -30,6 +31,7 @@ export async function sendTransactionalEmail(input: {
     html: input.html,
     replyTo: input.replyTo ?? undefined,
     headers: input.headers,
+    attachments: input.attachments,
   });
 
   if (result.error) {

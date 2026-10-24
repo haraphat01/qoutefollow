@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import {
   boolean,
+  index,
   integer,
   numeric,
   pgEnum,
@@ -89,6 +90,12 @@ export const organizations = pgTable("organizations", {
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
   /** Set by a platform admin: members can't sign in and follow-ups stop. */
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  /** Uploaded PNG/JPEG shown on quotes, PDFs and customer emails. */
+  logoPath: text("logo_path"),
+  /** Pre-filled on new quotes, as a percentage (8.25 = 8.25%). */
+  defaultTaxRate: numeric("default_tax_rate", { precision: 6, scale: 3 }).notNull().default("0"),
+  weeklySummaryEnabled: boolean("weekly_summary_enabled").notNull().default(true),
+  lastWeeklySummaryAt: timestamp("last_weekly_summary_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -233,15 +240,49 @@ export const quotes = pgTable("quotes", {
   approvedAt: timestamp("approved_at", { withTimezone: true }),
   /** Last time the estimate itself was emailed to the customer. */
   sentAt: timestamp("sent_at", { withTimezone: true }),
+  /** Unguessable id for the customer's online quote page (/q/<token>). */
+  publicToken: text("public_token"),
+  jobType: text("job_type"),
+  assignedUserId: uuid("assigned_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  discountType: text("discount_type"),
+  discountValue: numeric("discount_value", { precision: 12, scale: 2 }).notNull().default("0"),
+  taxRate: numeric("tax_rate", { precision: 6, scale: 3 }).notNull().default("0"),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  acceptedName: text("accepted_name"),
+  acceptedOptionId: uuid("accepted_option_id"),
+  acceptedIp: text("accepted_ip"),
+  acceptedUserAgent: text("accepted_user_agent"),
+  viewCount: integer("view_count").notNull().default(0),
+  firstViewedAt: timestamp("first_viewed_at", { withTimezone: true }),
+  lastViewedAt: timestamp("last_viewed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+}, (table) => [
+  // Not unique: adding a unique constraint to an existing table makes
+  // drizzle-kit offer to truncate it. The 24-byte random tokens don't collide.
+  index("quotes_public_token_idx").on(table.publicToken),
+]);
+
+/** Good / Better / Best choices; a quote without options has no rows here. */
+export const quoteOptions = pgTable("quote_options", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  quoteId: uuid("quote_id")
+    .notNull()
+    .references(() => quotes.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  sortOrder: integer("sort_order").notNull(),
 });
 
-/** Itemized lines; quotes.amount always holds their total. */
+/** Itemized lines; quotes.amount holds the total (of the chosen or first option). */
 export const quoteLineItems = pgTable("quote_line_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id")
@@ -250,6 +291,9 @@ export const quoteLineItems = pgTable("quote_line_items", {
   quoteId: uuid("quote_id")
     .notNull()
     .references(() => quotes.id, { onDelete: "cascade" }),
+  optionId: uuid("option_id").references(() => quoteOptions.id, {
+    onDelete: "cascade",
+  }),
   description: text("description").notNull(),
   quantity: numeric("quantity", { precision: 12, scale: 2 }).notNull(),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
@@ -406,6 +450,37 @@ export const activityLogs = pgTable("activity_logs", {
   entityId: uuid("entity_id"),
   action: text("action").notNull(),
   metadata: text("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** Reusable items with a saved price. */
+export const priceBookItems = pgTable("price_book_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** A saved starting point for new quotes; `pricing` is the editor's JSON. */
+export const quoteTemplates = pgTable("quote_templates", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  jobDescription: text("job_description").notNull(),
+  jobType: text("job_type"),
+  pricing: text("pricing").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

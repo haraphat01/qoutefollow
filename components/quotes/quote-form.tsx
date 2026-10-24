@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 
 import { createQuoteAction } from "@/lib/actions/quotes";
 import type { ActionState } from "@/lib/actions/auth";
-import { LineItemsEditor } from "@/components/quotes/line-items-editor";
+import type { PricingDraft } from "@/lib/quotes/pricing";
+import { QuotePricingEditor, type PriceBookOption } from "@/components/quotes/line-items-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,22 +17,48 @@ const selectClassName =
 
 type CustomerOption = { id: string; name: string; email: string };
 type SequenceOption = { id: string; name: string; isDefault: boolean };
+type MemberOption = { id: string; name: string };
+type TemplateOption = {
+  id: string;
+  name: string;
+  jobDescription: string;
+  jobType: string | null;
+  pricing: PricingDraft | null;
+};
 
 const initialState: ActionState = {};
 
 export function QuoteForm({
   customers,
   sequences,
+  members,
+  currentUserId,
+  templates,
+  priceBook,
+  jobTypes,
+  defaultTaxRate,
   defaultCustomerId,
+  defaultTemplateId,
 }: {
   customers: CustomerOption[];
   sequences: SequenceOption[];
+  members: MemberOption[];
+  currentUserId: string;
+  templates: TemplateOption[];
+  priceBook: PriceBookOption[];
+  jobTypes: string[];
+  defaultTaxRate: number;
   defaultCustomerId?: string;
+  defaultTemplateId?: string;
 }) {
   const defaultSequenceId =
     sequences.find((s) => s.isDefault)?.id ?? sequences[0]?.id ?? "";
   const [state, action, pending] = useActionState(createQuoteAction, initialState);
   const today = new Date().toISOString().slice(0, 10);
+  const [templateId, setTemplateId] = useState(
+    templates.some((template) => template.id === defaultTemplateId) ? defaultTemplateId! : "",
+  );
+  const template = templates.find((item) => item.id === templateId) ?? null;
 
   return (
     <form action={action} className="space-y-7">
@@ -39,6 +66,24 @@ export function QuoteForm({
         <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {state.error}
         </p>
+      ) : null}
+
+      {templates.length > 0 ? (
+        <div className="space-y-2 rounded-xl border border-border/80 bg-muted/40 p-4">
+          <Label htmlFor="templateId">Start from a template <span className="font-normal text-muted-foreground">(optional)</span></Label>
+          <select
+            id="templateId"
+            className={selectClassName}
+            value={templateId}
+            onChange={(event) => setTemplateId(event.target.value)}
+          >
+            <option value="">Blank quote</option>
+            {templates.map((item) => (
+              <option key={item.id} value={item.id}>{item.name}</option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">Fills in the job description and items. You can change anything before saving.</p>
+        </div>
       ) : null}
 
       <section className="space-y-4">
@@ -78,34 +123,61 @@ export function QuoteForm({
         </div>
       </section>
 
-      <section className="space-y-4 border-t border-border/70 pt-6">
+      {/* Re-mount with the chosen template so its values become the defaults. */}
+      <section key={templateId || "blank"} className="space-y-4 border-t border-border/70 pt-6">
         <div>
           <h2 className="text-sm font-semibold">Estimate</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Summarize the job, then list each item. The total is calculated for you.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Summarize the job, then list each item. Totals are calculated for you.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-[1fr_14rem]">
+          <div className="space-y-2">
+            <Label htmlFor="jobDescription">Job description</Label>
+            <Textarea
+              id="jobDescription"
+              name="jobDescription"
+              rows={3}
+              placeholder="e.g. Full roof replacement, 2,400 sq ft"
+              defaultValue={template?.jobDescription ?? ""}
+              required
+            />
+            {state.fieldErrors?.jobDescription ? (
+              <p className="text-sm text-destructive">{state.fieldErrors.jobDescription[0]}</p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="jobType">Job type <span className="font-normal text-muted-foreground">(optional)</span></Label>
+            <Input
+              id="jobType"
+              name="jobType"
+              list="job-type-suggestions"
+              maxLength={80}
+              placeholder="e.g. Roof replacement"
+              defaultValue={template?.jobType ?? ""}
+            />
+            <datalist id="job-type-suggestions">
+              {jobTypes.map((type) => (
+                <option key={type} value={type} />
+              ))}
+            </datalist>
+            <p className="text-xs text-muted-foreground">Used to compare win rates in Reports.</p>
+          </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="jobDescription">Job description</Label>
-          <Textarea id="jobDescription" name="jobDescription" rows={3} placeholder="e.g. Full roof replacement, 2,400 sq ft" required />
-          {state.fieldErrors?.jobDescription ? (
-            <p className="text-sm text-destructive">
-              {state.fieldErrors.jobDescription[0]}
-            </p>
-          ) : null}
+          <p className="text-sm font-medium">Pricing</p>
+          <QuotePricingEditor
+            initial={template?.pricing ?? undefined}
+            priceBook={priceBook}
+            defaultTaxRate={defaultTaxRate}
+            error={state.fieldErrors?.pricing?.[0]}
+          />
         </div>
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Items</p>
-          <LineItemsEditor error={state.fieldErrors?.lineItems?.[0]} />
-        </div>
+      </section>
+
+      <section className="space-y-4 border-t border-border/70 pt-6">
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="quoteDate">Quote date</Label>
-            <Input
-              id="quoteDate"
-              name="quoteDate"
-              type="date"
-              defaultValue={today}
-              required
-            />
+            <Input id="quoteDate" name="quoteDate" type="date" defaultValue={today} required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="expiresAt">Expiration date <span className="font-normal text-muted-foreground">(optional)</span></Label>
@@ -119,53 +191,49 @@ export function QuoteForm({
             </select>
           </div>
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {members.length > 1 ? (
+            <div className="space-y-2">
+              <Label htmlFor="assignedUserId">Assigned to</Label>
+              <select id="assignedUserId" name="assignedUserId" className={selectClassName} defaultValue={currentUserId}>
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name}{member.id === currentUserId ? " (you)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+          {sequences.length > 0 ? (
+            <div className="space-y-2">
+              <Label htmlFor="sequenceId">Follow-up sequence</Label>
+              <select id="sequenceId" name="sequenceId" className={selectClassName} defaultValue={defaultSequenceId}>
+                {sequences.map((sequence) => (
+                  <option key={sequence.id} value={sequence.id}>
+                    {sequence.name}
+                    {sequence.isDefault ? " (default)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+        </div>
         <div className="space-y-2">
           <Label htmlFor="notes">Internal notes <span className="font-normal text-muted-foreground">(optional)</span></Label>
           <Textarea id="notes" name="notes" rows={3} placeholder="Anything your team should remember…" />
         </div>
       </section>
 
-      {sequences.length > 0 ? (
-        <div className="space-y-2">
-          <Label htmlFor="sequenceId">Follow-up sequence</Label>
-          <select
-            id="sequenceId"
-            name="sequenceId"
-            className={selectClassName}
-            defaultValue={defaultSequenceId}
-          >
-            {sequences.map((sequence) => (
-              <option key={sequence.id} value={sequence.id}>
-                {sequence.name}
-                {sequence.isDefault ? " (default)" : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : null}
-
       <div className="flex items-start gap-3 rounded-xl border border-primary/25 bg-primary/[0.04] p-4">
-        <input
-          id="sendNow"
-          type="checkbox"
-          name="sendNow"
-          defaultChecked
-          className="mt-0.5 size-4 shrink-0 accent-primary"
-        />
+        <input id="sendNow" type="checkbox" name="sendNow" defaultChecked className="mt-0.5 size-4 shrink-0 accent-primary" />
         <div>
           <Label htmlFor="sendNow" className="cursor-pointer">Email this quote to the customer now</Label>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">They get an itemized estimate from your business with a reply button. Follow-ups count from when it&apos;s sent. Untick to save it and send later.</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">They get the estimate with a PDF and a link to view and accept it online. Follow-ups count from when it&apos;s sent. Untick to save it and send later.</p>
         </div>
       </div>
 
       <div className="flex items-start gap-3 rounded-xl border border-border/80 bg-muted/55 p-4">
-        <input
-          id="followUpsEnabled"
-          type="checkbox"
-          name="followUpsEnabled"
-          defaultChecked
-          className="mt-0.5 size-4 shrink-0 accent-primary"
-        />
+        <input id="followUpsEnabled" type="checkbox" name="followUpsEnabled" defaultChecked className="mt-0.5 size-4 shrink-0 accent-primary" />
         <div>
           <Label htmlFor="followUpsEnabled" className="cursor-pointer">Enable quote follow-ups</Label>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Send the emails in the selected sequence. They stop when the quote is closed or cancelled.</p>

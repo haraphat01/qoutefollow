@@ -11,23 +11,36 @@ import {
 } from "@/components/ui/card";
 import { listCustomers } from "@/lib/queries/customers";
 import { listOrganizationSequences } from "@/lib/queries/sequences";
+import { listOrganizationMembers } from "@/lib/queries/members";
+import {
+  getQuotingSettings,
+  listJobTypes,
+  listPriceBook,
+  listQuoteTemplates,
+} from "@/lib/queries/quoting";
 import { getSession } from "@/lib/auth/session";
 
 export default async function NewQuotePage({
   searchParams,
 }: {
-  searchParams: Promise<{ customerId?: string }>;
+  searchParams: Promise<{ customerId?: string; templateId?: string }>;
 }) {
   const session = await getSession();
   if (!session) {
     return null;
   }
 
-  const { customerId } = await searchParams;
+  const { customerId, templateId } = await searchParams;
+  const organizationId = session.organization.id;
 
-  const [customers, sequences] = await Promise.all([
-    listCustomers(session.organization.id),
-    listOrganizationSequences(session.organization.id),
+  const [customers, sequences, members, templates, priceBook, jobTypes, settings] = await Promise.all([
+    listCustomers(organizationId),
+    listOrganizationSequences(organizationId),
+    listOrganizationMembers(organizationId),
+    listQuoteTemplates(organizationId),
+    listPriceBook(organizationId),
+    listJobTypes(organizationId),
+    getQuotingSettings(organizationId),
   ]);
 
   return (
@@ -53,6 +66,13 @@ export default async function NewQuotePage({
         <CardContent className="pt-5">
           <QuoteForm
             defaultCustomerId={customerId}
+            defaultTemplateId={templateId}
+            members={members.map((member) => ({ id: member.id, name: member.name }))}
+            currentUserId={session.user.id}
+            templates={templates}
+            priceBook={priceBook}
+            jobTypes={jobTypes}
+            defaultTaxRate={settings.defaultTaxRate}
             customers={customers.map((customer) => ({
               id: customer.id,
               name: customer.name,

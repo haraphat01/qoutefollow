@@ -37,6 +37,7 @@ import {
 } from "@/lib/follow-ups/retry";
 import { resolveEntitlements } from "@/lib/billing/entitlements";
 import { isEmailSuppressed } from "@/lib/suppressions";
+import { logoUrl, publicQuoteUrl } from "@/lib/quotes/branding";
 
 export type SendFollowUpResult =
   | { ok: true; scheduledFollowUpId: string }
@@ -221,6 +222,8 @@ export async function sendScheduledFollowUp(
     mailingAddress: organization.mailingAddress,
     unsubscribeUrl: unsub,
     replyTo,
+    logoUrl: logoUrl(organization),
+    viewUrl: quote.publicToken ? publicQuoteUrl(quote.publicToken) : null,
     estimate: {
       quoteNumber: variables.quote_number,
       jobDescription: variables.job_description,

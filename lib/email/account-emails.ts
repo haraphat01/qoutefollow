@@ -294,6 +294,126 @@ export function buildReplyForwardEmail(input: {
   };
 }
 
+export function buildQuoteAcceptedAlertEmail(input: {
+  quoteNumber: string;
+  customerName: string;
+  signerName: string;
+  optionName: string | null;
+  total: string;
+  url: string;
+}): AccountEmail {
+  const subject = `${input.customerName} accepted ${input.quoteNumber} (${input.total})`;
+  const choice = input.optionName ? ` and chose ${input.optionName}` : "";
+  return {
+    subject,
+    text: [
+      `${input.customerName} accepted estimate ${input.quoteNumber} online${choice}.`,
+      `Signed by: ${input.signerName}`,
+      `Total: ${input.total}`,
+      "",
+      "Follow-ups for this quote have stopped.",
+      `Open the quote: ${input.url}`,
+      ...SIGN_OFF,
+    ].join("\n"),
+    html: brandEmail({
+      subject,
+      preheader: `Signed by ${input.signerName} · ${input.total}`,
+      reason: "You're receiving this because you're on the team in this QuoteFollow workspace.",
+      body:
+        heading(`${input.quoteNumber} was accepted`) +
+        paragraph(`<strong>${escapeHtml(input.customerName)}</strong> accepted the estimate online${escapeHtml(choice)}. Follow-ups for this quote have stopped.`) +
+        panel(
+          paragraph(`Signed by <strong>${escapeHtml(input.signerName)}</strong><br>Total <strong>${escapeHtml(input.total)}</strong>`),
+          "Acceptance",
+        ) +
+        button("Open the quote", input.url),
+    }),
+  };
+}
+
+export function buildQuoteAssignedEmail(input: {
+  assignerName: string;
+  quoteNumber: string;
+  customerName: string;
+  total: string;
+  url: string;
+}): AccountEmail {
+  const subject = `${input.assignerName} assigned ${input.quoteNumber} to you`;
+  return {
+    subject,
+    text: [
+      `${input.assignerName} assigned estimate ${input.quoteNumber} for ${input.customerName} (${input.total}) to you.`,
+      "",
+      `Open the quote: ${input.url}`,
+      ...SIGN_OFF,
+    ].join("\n"),
+    html: brandEmail({
+      subject,
+      preheader: `${input.customerName} · ${input.total}`,
+      reason: "You're receiving this because a teammate assigned you a quote in QuoteFollow.",
+      body:
+        heading(`${input.quoteNumber} is yours`) +
+        paragraph(`<strong>${escapeHtml(input.assignerName)}</strong> assigned the estimate for <strong>${escapeHtml(input.customerName)}</strong> (${escapeHtml(input.total)}) to you.`) +
+        button("Open the quote", input.url),
+    }),
+  };
+}
+
+export function buildWeeklySummaryEmail(input: {
+  businessName: string;
+  stats: [label: string, value: string][];
+  pipeline: string;
+  stale: { label: string; url: string }[];
+  dashboardUrl: string;
+  settingsUrl: string;
+}): AccountEmail {
+  const subject = `Your week at ${input.businessName}`;
+  const statRows = input.stats
+    .map(
+      ([label, value]) => `<tr>
+  <td style="padding:6px 0;font-size:14px;color:${EMAIL_COLORS.muted};">${escapeHtml(label)}</td>
+  <td style="padding:6px 0;font-size:14px;font-weight:600;color:${EMAIL_COLORS.text};text-align:right;">${escapeHtml(value)}</td>
+</tr>`,
+    )
+    .join("");
+  const staleHtml = input.stale.length
+    ? paragraph("<strong>Worth a call</strong> — open a week or more with no reply:") +
+      `<ul style="margin:0 0 16px;padding-left:18px;">${input.stale
+        .map((item) => `<li style="margin:0 0 6px;font-size:14px;"><a href="${escapeHtml(item.url)}" style="color:${EMAIL_COLORS.button};">${escapeHtml(item.label)}</a></li>`)
+        .join("")}</ul>`
+    : paragraph("No quotes have gone quiet for a week. Nice work.");
+
+  return {
+    subject,
+    text: [
+      `Your week at ${input.businessName}`,
+      "",
+      ...input.stats.map(([label, value]) => `${label}: ${value}`),
+      "",
+      `Pipeline: ${input.pipeline}`,
+      "",
+      ...(input.stale.length
+        ? ["Worth a call (open a week+ with no reply):", ...input.stale.map((item) => `- ${item.label}: ${item.url}`)]
+        : ["No quotes have gone quiet for a week."]),
+      "",
+      `Open QuoteFollow: ${input.dashboardUrl}`,
+      `Turn off weekly summaries: ${input.settingsUrl}`,
+      ...SIGN_OFF,
+    ].join("\n"),
+    html: brandEmail({
+      subject,
+      preheader: input.stats.map(([label, value]) => `${label}: ${value}`).slice(0, 3).join(" · "),
+      reason: "You're receiving this weekly summary as a workspace owner. Turn it off under Settings → Email.",
+      body:
+        heading("Your week in quotes") +
+        panel(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${statRows}</table>`, "Last 7 days") +
+        paragraph(`<strong>Pipeline:</strong> ${escapeHtml(input.pipeline)}`) +
+        staleHtml +
+        button("Open QuoteFollow", input.dashboardUrl),
+    }),
+  };
+}
+
 /** Account and team emails need Resend; without it these flows are skipped. */
 export function accountEmailsEnabled() {
   return Boolean(process.env.RESEND_API_KEY);

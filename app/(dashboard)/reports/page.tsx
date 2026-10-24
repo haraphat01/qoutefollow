@@ -13,6 +13,8 @@ import { formatCurrency } from "@/lib/format";
 import { ReportsIntelligenceSection } from "@/components/reports/intelligence-section";
 import { getOrganizationIntelligence } from "@/lib/queries/intelligence";
 import { getOrganizationReport } from "@/lib/queries/reports";
+import { getWinRateReport } from "@/lib/queries/win-rates";
+import { WinRateSection } from "@/components/reports/win-rate-section";
 
 export default async function ReportsPage() {
   const session = await getSession();
@@ -46,9 +48,10 @@ export default async function ReportsPage() {
     );
   }
 
-  const [report, intelligence] = await Promise.all([
+  const [report, intelligence, winRates] = await Promise.all([
     getOrganizationReport(session.organization.id, 30),
     getOrganizationIntelligence(session.organization.id),
+    getWinRateReport(session.organization.id),
   ]);
 
   return (
@@ -105,6 +108,16 @@ export default async function ReportsPage() {
           </CardContent>
         </Card>
       </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Win rates</CardTitle>
+          <CardDescription>What you win, by job type, salesperson and quote size.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <WinRateSection report={winRates} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

@@ -7,7 +7,7 @@ import { cancelScheduledFollowUpsForQuote } from "@/lib/follow-ups/schedule";
 import { handleCustomerReply } from "@/lib/replies/handle-customer-reply";
 import { resolveQuoteFromInboundEmail } from "@/lib/replies/resolve-quote";
 import { suppressEmail } from "@/lib/suppressions";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 
 type ResendWebhookEvent = {
   type: string;
@@ -108,6 +108,44 @@ export async function handleResendWebhookEvent(event: ResendWebhookEvent) {
     }
 
     return { ok: true, handled: Boolean(sentEvent) };
+  }
+
+  // Needs open/click tracking switched on for the sending domain in Resend.
+  if ((event.type === "email.opened" || event.type === "email.clicked") && providerMessageId) {
+    const eventType = event.type === "email.opened" ? "opened" : "clicked";
+    const [sentEvent] = await db
+      .select()
+      .from(emailEvents)
+      .where(and(eq(emailEvents.providerMessageId, providerMessageId), eq(emailEvents.eventType, "sent")))
+      .limit(1);
+    if (!sentEvent) {
+      return { ok: true, handled: false };
+    }
+
+    // Mail apps re-open messages constantly; count one per message per hour.
+    const [recent] = await db
+      .select({ id: emailEvents.id })
+      .from(emailEvents)
+      .where(
+        and(
+          eq(emailEvents.providerMessageId, providerMessageId),
+          eq(emailEvents.eventType, eventType),
+          gt(emailEvents.createdAt, new Date(Date.now() - 60 * 60 * 1000)),
+        ),
+      )
+      .limit(1);
+    if (!recent) {
+      const click = (data.click as { link?: string } | undefined)?.link;
+      await db.insert(emailEvents).values({
+        organizationId: sentEvent.organizationId,
+        quoteId: sentEvent.quoteId,
+        scheduledFollowUpId: sentEvent.scheduledFollowUpId,
+        providerMessageId,
+        eventType,
+        payload: JSON.stringify(click ? { link: click } : {}),
+      });
+    }
+    return { ok: true, handled: true, type: event.type };
   }
 
   if (event.type === "email.received") {

@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/lib/db";
@@ -9,10 +10,14 @@ import {
   quotes,
 } from "@/lib/db/schema";
 import { scheduleFollowUpsForQuote } from "@/lib/follow-ups/schedule";
-import type { LineItem } from "@/lib/quotes/line-items";
-import { quoteTotal } from "@/lib/quotes/line-items";
 import { nextQuoteNumber } from "@/lib/quotes/numbers";
-import { replaceQuoteLineItems } from "@/lib/quotes/save-line-items";
+import { quoteAmount, type QuotePricing } from "@/lib/quotes/pricing";
+import { pricingColumns, saveQuotePricing } from "@/lib/quotes/save-line-items";
+
+/** The secret in a customer's online quote link. */
+export function newPublicToken() {
+  return randomBytes(24).toString("base64url");
+}
 
 export type CreateQuoteInput = {
   organizationId: string;
@@ -20,8 +25,11 @@ export type CreateQuoteInput = {
   customerId?: string;
   customerName?: string;
   customerEmail?: string;
-  /** The quote amount is their total. */
-  lineItems: LineItem[];
+  /** The quote amount is the (first option's) total. */
+  pricing: QuotePricing;
+  jobType?: string | null;
+  /** Teammate responsible for the quote; must belong to the organization. */
+  assignedUserId?: string | null;
   jobDescription: string;
   quoteDate: Date;
   expiresAt?: Date | null;
@@ -129,7 +137,10 @@ export async function createQuoteFromInput(input: CreateQuoteInput) {
       organizationId: input.organizationId,
       customerId,
       quoteNumber,
-      amount: quoteTotal(input.lineItems).toFixed(2),
+      ...pricingColumns(input.pricing, quoteAmount(input.pricing)),
+      jobType: input.jobType?.trim() || null,
+      assignedUserId: input.assignedUserId ?? input.userId,
+      publicToken: newPublicToken(),
       jobDescription: input.jobDescription,
       quoteDate: input.quoteDate,
       expiresAt: input.expiresAt ?? null,
@@ -142,10 +153,10 @@ export async function createQuoteFromInput(input: CreateQuoteInput) {
     })
     .returning();
 
-  await replaceQuoteLineItems(db, {
+  await saveQuotePricing(db, {
     organizationId: input.organizationId,
     quoteId: quote.id,
-    items: input.lineItems,
+    pricing: input.pricing,
   });
 
   if (input.documentId) {

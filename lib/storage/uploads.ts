@@ -22,12 +22,13 @@ export async function saveOrganizationUpload(
   organizationId: string,
   fileName: string,
   data: Buffer,
+  contentType = "application/pdf",
 ): Promise<string> {
   if (blobConfigured()) {
     const pathname = `uploads/${organizationId}/${fileName}`;
     await put(pathname, data, {
       access: "private",
-      contentType: "application/pdf",
+      contentType,
       token: process.env.BLOB_READ_WRITE_TOKEN,
     });
     return `${BLOB_PREFIX}${pathname}`;

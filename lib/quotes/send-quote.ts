@@ -1,24 +1,40 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { resolveEntitlements } from "@/lib/billing/entitlements";
 import { db } from "@/lib/db";
-import {
-  activityLogs,
-  conversations,
-  customers,
-  emailEvents,
-  organizations,
-  quotes,
-} from "@/lib/db/schema";
+import { activityLogs, conversations, emailEvents, quotes } from "@/lib/db/schema";
 import { replyAddressForQuote } from "@/lib/email/reply-address";
 import { sendTransactionalEmail } from "@/lib/email/resend";
 import { buildQuoteEmail } from "@/lib/email/templates";
 import { createUnsubscribeToken, unsubscribeUrl } from "@/lib/email/unsubscribe";
 import { scheduleFollowUpsForQuote } from "@/lib/follow-ups/schedule";
 import { formatDate, formatMoney } from "@/lib/format";
-import { lineTotal } from "@/lib/quotes/line-items";
-import { listQuoteLineItems } from "@/lib/quotes/save-line-items";
+import { logoUrl, publicQuoteUrl, quotePdfFileName } from "@/lib/quotes/branding";
+import { newPublicToken } from "@/lib/quotes/create-quote";
+import { quotePdfBytes } from "@/lib/quotes/pdf-response";
+import { loadQuoteDocument, type QuoteDocument } from "@/lib/quotes/quote-document";
 import { isEmailSuppressed } from "@/lib/suppressions";
+
+/** The options, items and totals formatted for the quote email. */
+export function quoteEmailPricing(document: QuoteDocument) {
+  return {
+    options: document.options.map((option) => ({
+      name: option.name,
+      items: option.items.map((item) => ({
+        description: item.description,
+        quantity: String(item.quantity),
+        unitPrice: formatMoney(item.unitPrice),
+        amount: formatMoney(item.amount),
+      })),
+      subtotal: formatMoney(option.totals.subtotal),
+      discount: option.totals.discount > 0 ? formatMoney(option.totals.discount) : null,
+      tax: option.totals.tax > 0 ? formatMoney(option.totals.tax) : null,
+      total: formatMoney(option.totals.total),
+    })),
+    discountLabel: document.discount?.type === "percent" ? `Discount (${document.discount.value}%)` : "Discount",
+    taxLabel: `Tax (${document.taxRate}%)`,
+  };
+}
 
 export type SendQuoteResult = { ok: true } | { ok: false; reason: string };
 
@@ -38,18 +54,14 @@ export async function sendQuoteToCustomer(input: {
     return { ok: false, reason: "Email sending isn't set up yet (RESEND_API_KEY is missing)." };
   }
 
-  const [row] = await db
-    .select({ quote: quotes, customer: customers, organization: organizations })
-    .from(quotes)
-    .innerJoin(customers, eq(customers.id, quotes.customerId))
-    .innerJoin(organizations, eq(organizations.id, quotes.organizationId))
-    .where(and(eq(quotes.id, input.quoteId), eq(quotes.organizationId, input.organizationId)))
-    .limit(1);
-
-  if (!row) {
+  const document = await loadQuoteDocument({
+    organizationId: input.organizationId,
+    quoteId: input.quoteId,
+  });
+  if (!document) {
     return { ok: false, reason: "Quote not found." };
   }
-  const { quote, customer, organization } = row;
+  const { quote, customer, organization } = document;
 
   if (!OPEN_STATUSES.has(quote.status)) {
     return { ok: false, reason: "Only open or draft quotes can be sent. Reopen it first." };
@@ -72,11 +84,11 @@ export async function sendQuoteToCustomer(input: {
     };
   }
 
-  const items = await listQuoteLineItems(quote.id);
-  const lines =
-    items.length > 0
-      ? items
-      : [{ description: quote.jobDescription, quantity: 1, unitPrice: Number(quote.amount) }];
+  // Quotes created before online acceptance get their link the first time they're sent.
+  if (!quote.publicToken) {
+    quote.publicToken = newPublicToken();
+    await db.update(quotes).set({ publicToken: quote.publicToken }).where(eq(quotes.id, quote.id));
+  }
 
   const unsub = unsubscribeUrl(
     createUnsubscribeToken({ organizationId: organization.id, email: customer.email }),
@@ -90,19 +102,16 @@ export async function sendQuoteToCustomer(input: {
     mailingAddress: organization.mailingAddress,
     unsubscribeUrl: unsub,
     replyTo,
+    logoUrl: logoUrl(organization),
+    viewUrl: publicQuoteUrl(quote.publicToken),
     customerName: customer.name,
     quoteNumber: quote.quoteNumber,
     jobDescription: quote.jobDescription,
-    items: lines.map((item) => ({
-      description: item.description,
-      quantity: String(item.quantity),
-      unitPrice: formatMoney(item.unitPrice),
-      amount: formatMoney(lineTotal(item)),
-    })),
-    total: formatMoney(quote.amount),
+    ...quoteEmailPricing(document),
     quoteDate: formatDate(quote.quoteDate),
     expiresAt: quote.expiresAt ? formatDate(quote.expiresAt) : "",
   });
+  const pdf = Buffer.from(await quotePdfBytes(document));
 
   let providerMessageId: string | null;
   try {
@@ -112,6 +121,9 @@ export async function sendQuoteToCustomer(input: {
       text: email.text,
       html: email.html,
       replyTo,
+      attachments: [
+        { filename: quotePdfFileName(quote.quoteNumber, organization.name), content: pdf },
+      ],
       headers: {
         "X-QuoteFollow-Quote-Id": quote.id,
         "X-QuoteFollow-Org-Id": organization.id,

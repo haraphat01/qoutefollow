@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Mail, Plus, Users } from "lucide-react";
+import { ArrowRight, Download, Mail, Plus, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,9 +39,14 @@ export default async function CustomersPage() {
             Keep contact details close to the quotes and jobs they belong to.
           </p>
         </div>
-        <Button asChild size="lg" className="h-11 gap-2 self-start rounded-xl px-4 sm:self-auto">
-          <Link href="/customers/new"><Plus className="size-4" /> Add customer</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+          <Button asChild size="lg" variant="outline" className="h-11 gap-2 rounded-xl bg-card px-4">
+            <a href="/api/export/customers"><Download className="size-4" /> Export CSV</a>
+          </Button>
+          <Button asChild size="lg" className="h-11 gap-2 rounded-xl px-4">
+            <Link href="/customers/new"><Plus className="size-4" /> Add customer</Link>
+          </Button>
+        </div>
       </div>
 
       <Card className="gap-0">

@@ -51,11 +51,22 @@ describe("email compliance helpers", () => {
       customerName: "Jordan Miller",
       quoteNumber: "QF-9",
       jobDescription: "roof replacement",
-      items: [
-        { description: "Shingles", quantity: "24", unitPrice: "$125.50", amount: "$3,012.00" },
-        { description: "Dumpster", quantity: "1", unitPrice: "$450.00", amount: "$450.00" },
+      options: [
+        {
+          name: null,
+          items: [
+            { description: "Shingles", quantity: "24", unitPrice: "$125.50", amount: "$3,012.00" },
+            { description: "Dumpster", quantity: "1", unitPrice: "$450.00", amount: "$450.00" },
+          ],
+          subtotal: "$3,462.00",
+          discount: null,
+          tax: null,
+          total: "$3,462.00",
+        },
       ],
-      total: "$3,462.00",
+      discountLabel: "Discount",
+      taxLabel: "Tax (0%)",
+      viewUrl: "https://app.example.com/q/token123",
       quoteDate: "Oct 24, 2026",
       expiresAt: "Nov 30, 2026",
     });
@@ -68,5 +79,7 @@ describe("email compliance helpers", () => {
     expect(email.text).toContain("- Dumpster: 1 × $450.00 = $450.00");
     expect(email.text).toContain("Hi Jordan,");
     expect(email.text).toContain("https://example.com/u");
+    expect(email.html).toContain("View &amp; accept online");
+    expect(email.html).toContain("https://app.example.com/q/token123");
   });
 });

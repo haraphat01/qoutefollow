@@ -34,8 +34,10 @@ import { listQuoteInternalNotes } from "@/lib/queries/internal-notes";
 import { listOrganizationMembers } from "@/lib/queries/members";
 import { listQuoteDocuments } from "@/lib/queries/documents";
 import { getQuoteDetail } from "@/lib/queries/quotes";
-import { lineTotal } from "@/lib/quotes/line-items";
-import { listQuoteLineItems } from "@/lib/quotes/save-line-items";
+import { loadQuoteDocument } from "@/lib/quotes/quote-document";
+import { AssigneeSelect } from "@/components/quotes/assignee-select";
+import { QuotePricingView } from "@/components/quotes/quote-pricing-view";
+import { QuoteToolbar } from "@/components/quotes/quote-toolbar";
 import { getLatestInboundInsight } from "@/lib/queries/intelligence";
 import { getQuoteEmailAuditLog } from "@/lib/queries/quote-email-audit";
 import { formatClassificationLabel } from "@/lib/replies/classification-labels";
@@ -66,7 +68,7 @@ export default async function QuoteDetailPage({
   }
 
   const { quote, customer } = detail;
-  const lineItems = await listQuoteLineItems(quote.id);
+  const document = (await loadQuoteDocument({ organizationId: session.organization.id, quoteId: quote.id }))!;
 
   const [
     conversationRows,
@@ -136,11 +138,29 @@ export default async function QuoteDetailPage({
         </div>
         <div className="flex items-center gap-3">
           <QuoteStatusBadge status={quote.status} />
-          <Button asChild variant="outline" size="sm" className="gap-1.5">
-            <Link href={`/quotes/${quote.id}/edit`}><Pencil className="size-3.5" /> Edit quote</Link>
-          </Button>
+          {quote.acceptedAt ? null : (
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link href={`/quotes/${quote.id}/edit`}><Pencil className="size-3.5" /> Edit quote</Link>
+            </Button>
+          )}
         </div>
       </div>
+      <QuoteToolbar
+        quoteId={quote.id}
+        publicToken={quote.publicToken}
+        defaultTemplateName={quote.jobType || quote.jobDescription.slice(0, 60)}
+      />
+
+      {quote.acceptedAt ? (
+        <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+          <strong>Accepted online</strong> by {quote.acceptedName} on{" "}
+          {quote.acceptedAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: document.organization.sendTimezone })}
+          {document.acceptedOptionIndex !== null && document.options.length > 1
+            ? ` · chose ${document.options[document.acceptedOptionIndex].name}`
+            : ""}
+          {quote.acceptedIp ? <span className="text-emerald-800/80"> · from {quote.acceptedIp}</span> : null}. Signed quotes can&apos;t be edited; duplicate it for a new version.
+        </div>
+      ) : null}
 
       {sent === "1" ? (
         <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
@@ -180,39 +200,7 @@ export default async function QuoteDetailPage({
               <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Job description</p>
               <p className="mt-2 text-sm leading-relaxed">{quote.jobDescription}</p>
             </div>
-            {lineItems.length > 0 ? (
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Items</p>
-                <div className="mt-2 overflow-x-auto rounded-xl border border-border/80">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
-                      <tr>
-                        <th className="px-3 py-2 font-medium">Item</th>
-                        <th className="px-3 py-2 text-right font-medium">Qty</th>
-                        <th className="px-3 py-2 text-right font-medium">Unit price</th>
-                        <th className="px-3 py-2 text-right font-medium">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/70">
-                      {lineItems.map((item) => (
-                        <tr key={item.id}>
-                          <td className="min-w-40 px-3 py-2.5">{item.description}</td>
-                          <td className="px-3 py-2.5 text-right tabular-nums">{item.quantity}</td>
-                          <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(item.unitPrice)}</td>
-                          <td className="px-3 py-2.5 text-right font-medium tabular-nums">{formatMoney(lineTotal(item))}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="border-t border-border/80">
-                        <td colSpan={3} className="px-3 py-2.5 text-right font-semibold">Total</td>
-                        <td className="px-3 py-2.5 text-right font-semibold tabular-nums">{formatMoney(quote.amount)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
-            ) : null}
+            <QuotePricingView document={document} />
             <div className="grid gap-4 border-t border-border/70 pt-4 sm:grid-cols-2">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Expires</p>
@@ -269,6 +257,35 @@ export default async function QuoteDetailPage({
               <a href={`mailto:${customer.email}`} className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground hover:text-primary">
                 <Mail className="size-4 shrink-0" /><span className="min-w-0 break-all">{customer.email}</span>
               </a>
+            </CardContent>
+          </Card>
+          <Card className="gap-0">
+            <CardHeader>
+              <CardTitle>Owner &amp; activity</CardTitle>
+              <CardDescription className="mt-1">Who&apos;s responsible, and how the customer is engaging.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-3">
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Assigned to</p>
+                <AssigneeSelect
+                  quoteId={quote.id}
+                  assignedUserId={quote.assignedUserId}
+                  currentUserId={session.user.id}
+                  members={members.map((member) => ({ id: member.id, name: member.name }))}
+                />
+              </div>
+              <dl className="grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg bg-muted/60 p-3">
+                  <dt className="text-xs text-muted-foreground">Viewed online</dt>
+                  <dd className="mt-1 font-semibold" data-testid="view-count">{quote.viewCount} {quote.viewCount === 1 ? "time" : "times"}</dd>
+                  {quote.lastViewedAt ? <dd className="text-xs text-muted-foreground">Last {quote.lastViewedAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: document.organization.sendTimezone })}</dd> : null}
+                </div>
+                <div className="rounded-lg bg-muted/60 p-3">
+                  <dt className="text-xs text-muted-foreground">Emails opened</dt>
+                  <dd className="mt-1 font-semibold">{emailAudit.filter((entry) => entry.kind === "opened").length}</dd>
+                  <dd className="text-xs text-muted-foreground">{emailAudit.filter((entry) => entry.kind === "clicked").length} link clicks</dd>
+                </div>
+              </dl>
             </CardContent>
           </Card>
           {["draft", "pending", "paused"].includes(quote.status) ? (
