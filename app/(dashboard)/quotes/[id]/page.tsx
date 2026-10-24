@@ -38,6 +38,7 @@ import { loadQuoteDocument } from "@/lib/quotes/quote-document";
 import { AssigneeSelect } from "@/components/quotes/assignee-select";
 import { QuotePricingView } from "@/components/quotes/quote-pricing-view";
 import { QuoteToolbar } from "@/components/quotes/quote-toolbar";
+import { DeleteQuoteButton } from "@/components/quotes/delete-quote-button";
 import { getLatestInboundInsight } from "@/lib/queries/intelligence";
 import { getQuoteEmailAuditLog } from "@/lib/queries/quote-email-audit";
 import { formatClassificationLabel } from "@/lib/replies/classification-labels";
@@ -479,6 +480,25 @@ export default async function QuoteDetailPage({
           )}
         </CardContent>
       </Card>
+
+      {session.role === "owner" ? (
+        <Card className="gap-0 border-destructive/25">
+          <CardHeader>
+            <CardTitle>Delete quote</CardTitle>
+            <CardDescription className="mt-1">
+              Removes this quote and its history. Only the account owner can do this.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <DeleteQuoteButton
+              quoteId={quote.id}
+              quoteNumber={quote.quoteNumber}
+              sent={Boolean(quote.sentAt)}
+              accepted={quote.status === "accepted"}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

@@ -391,3 +391,40 @@ export async function assignQuoteAction(
   revalidatePath("/dashboard");
   return { success: true };
 }
+
+/**
+ * Owners only. Deletes the quote with its items, options, follow-ups, email
+ * history and notes. The customer is kept.
+ */
+export async function deleteQuoteAction(quoteId: string): Promise<ActionState> {
+  const session = await requireSession().catch(() => null);
+  if (!session) {
+    return { error: "You must be signed in." };
+  }
+  if (session.role !== "owner") {
+    return { error: "Only the account owner can delete quotes." };
+  }
+
+  const [deleted] = await db
+    .delete(quotes)
+    .where(and(eq(quotes.id, quoteId), eq(quotes.organizationId, session.organization.id)))
+    .returning({ id: quotes.id, quoteNumber: quotes.quoteNumber, customerId: quotes.customerId, amount: quotes.amount });
+  if (!deleted) {
+    return { error: "Quote not found." };
+  }
+
+  await db.insert(activityLogs).values({
+    organizationId: session.organization.id,
+    userId: session.user.id,
+    entityType: "quote",
+    entityId: deleted.id,
+    action: "deleted",
+    metadata: JSON.stringify({ quoteNumber: deleted.quoteNumber, amount: deleted.amount }),
+  });
+
+  revalidatePath("/quotes");
+  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  revalidatePath(`/customers/${deleted.customerId}`);
+  redirect("/quotes");
+}
