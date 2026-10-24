@@ -15,6 +15,30 @@ export type Entitlements = {
   canUseTeamFeatures: boolean;
 };
 
+/**
+ * A Stripe subscription exists (even if it's still in its trial period, after
+ * an early upgrade). The free trial alone has no subscription.
+ */
+export function hasPaidSubscription(org: {
+  stripeSubscriptionId: string | null;
+  subscriptionStatus: BillingSnapshot["status"];
+}) {
+  return (
+    Boolean(org.stripeSubscriptionId) &&
+    ["trialing", "active", "past_due"].includes(org.subscriptionStatus)
+  );
+}
+
+/** Days left in the free trial, or null when not on one. */
+export function trialDaysLeft(billing: BillingSnapshot & { stripeSubscriptionId: string | null }) {
+  if (billing.status !== "trialing" || !billing.trialEndsAt || billing.stripeSubscriptionId) {
+    return null;
+  }
+  const msLeft = billing.trialEndsAt.getTime() - Date.now();
+  // An ended trial isn't a trial any more: the owner subscribes rather than upgrades.
+  return msLeft > 0 ? Math.ceil(msLeft / 86_400_000) : null;
+}
+
 export function isStripeConfigured() {
   return Boolean(process.env.STRIPE_SECRET_KEY);
 }

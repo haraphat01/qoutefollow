@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 
 import { registerAction, type ActionState } from "@/lib/actions/auth";
@@ -77,6 +78,12 @@ export function RegisterForm() {
       <Button type="submit" size="lg" className="h-11 w-full rounded-xl" disabled={pending}>
         {pending ? "Creating account…" : "Create account"}
       </Button>
+      <p className="text-center text-xs leading-5 text-muted-foreground">
+        By creating an account you agree to the{" "}
+        <Link href="/terms" className="font-medium text-foreground underline-offset-4 hover:underline">Terms of Service</Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="font-medium text-foreground underline-offset-4 hover:underline">Privacy Policy</Link>.
+      </p>
     </form>
   );
 }

@@ -31,6 +31,12 @@ import {
   findAuthToken,
   issuedRecently,
 } from "@/lib/auth/tokens";
+import {
+  clearFailedSignIns,
+  clientIp,
+  recordFailedSignIn,
+  signInBlockedFor,
+} from "@/lib/auth/rate-limit";
 import { createDefaultFollowUpSequence } from "@/lib/organization/defaults";
 import { uniqueSlug } from "@/lib/utils/slug";
 import {
@@ -177,26 +183,31 @@ export async function loginAction(
     };
   }
 
+  const email = parsed.data.email.toLowerCase();
+  const ip = clientIp(await headers());
+  const lockedMinutes = await signInBlockedFor(email, ip);
+  if (lockedMinutes > 0) {
+    return {
+      error: `Too many sign-in attempts. Try again in ${lockedMinutes} minute${lockedMinutes === 1 ? "" : "s"}, or reset your password.`,
+      values: echo(formData, ["email"]),
+    };
+  }
+
   const [user] = await db
     .select()
     .from(users)
-    .where(eq(users.email, parsed.data.email.toLowerCase()))
+    .where(eq(users.email, email))
     .limit(1);
 
-  if (!user) {
+  // Unknown emails count too, so attempts can't reveal which accounts exist.
+  if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+    await recordFailedSignIn(email, ip);
     return {
       error: "Invalid email or password.",
       values: echo(formData, ["email"]),
     };
   }
-
-  const valid = await verifyPassword(parsed.data.password, user.passwordHash);
-  if (!valid) {
-    return {
-      error: "Invalid email or password.",
-      values: echo(formData, ["email"]),
-    };
-  }
+  await clearFailedSignIns(email);
 
   if (await isAccountBlocked(user.id)) {
     return { error: ACCOUNT_SUSPENDED_ERROR, values: echo(formData, ["email"]) };

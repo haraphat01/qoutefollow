@@ -318,6 +318,8 @@ export default function HomePage() {
           <Link href="#faq" className="hover:text-[#285742]">FAQ</Link>
           <Link href="#pricing" className="hover:text-[#285742]">Pricing</Link>
           <Link href="/login" className="hover:text-[#285742]">Sign in</Link>
+          <Link href="/terms" className="hover:text-[#285742]">Terms</Link>
+          <Link href="/privacy" className="hover:text-[#285742]">Privacy</Link>
         </nav>
         <Link href="/register" className="font-semibold text-[#4b6f57] hover:text-[#285742]">Build your workspace <ArrowRight className="ml-1 inline size-3.5" /></Link>
       </footer>

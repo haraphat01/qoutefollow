@@ -18,8 +18,13 @@ import {
   statusBadgeVariant,
 } from "@/lib/billing/labels";
 import { getOrganizationEntitlements } from "@/lib/billing/organization";
-import { isStripeConfigured } from "@/lib/billing/entitlements";
+import { hasPaidSubscription, isStripeConfigured, trialDaysLeft } from "@/lib/billing/entitlements";
 import { formatCurrency, formatDate } from "@/lib/format";
+
+/** Stripe Checkout needs a trial end at least 48 hours away to carry it over. */
+function keepsTrialOnUpgrade(trialEndsAt: Date) {
+  return trialEndsAt.getTime() - Date.now() >= 48 * 60 * 60 * 1000;
+}
 
 function trialDaysRemaining(trialEndsAt: Date | null) {
   if (!trialEndsAt) {
@@ -54,10 +59,13 @@ export default async function BillingPage({
       ? await getCustomerBillingSummary(org.stripeCustomerId).catch(() => null)
       : null;
 
-  const hasActiveSubscription =
-    Boolean(org.stripeSubscriptionId) &&
-    (org.subscriptionStatus === "active" ||
-      org.subscriptionStatus === "past_due");
+  const hasActiveSubscription = hasPaidSubscription(org);
+  const onFreeTrial = trialDaysLeft({
+    plan: org.subscriptionPlan,
+    status: org.subscriptionStatus,
+    trialEndsAt: org.trialEndsAt,
+    stripeSubscriptionId: org.stripeSubscriptionId,
+  }) !== null;
 
   const trialDays = trialDaysRemaining(org.trialEndsAt);
   const renewalDate =
@@ -191,8 +199,15 @@ export default async function BillingPage({
         <div className="space-y-3">
           <h2 className="text-lg font-semibold">Plan</h2>
           <PlanPicker
-            currentPlan={org.subscriptionPlan}
             hasActiveSubscription={hasActiveSubscription}
+            freeTrial={
+              onFreeTrial && org.trialEndsAt
+                ? {
+                    endsOn: formatDate(org.trialEndsAt),
+                    keepsTrial: keepsTrialOnUpgrade(org.trialEndsAt),
+                  }
+                : null
+            }
           />
         </div>
       ) : null}

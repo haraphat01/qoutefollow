@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { getSession } from "@/lib/auth/session";
+import { trialDaysLeft } from "@/lib/billing/entitlements";
+import { getOrganizationEntitlements } from "@/lib/billing/organization";
 
 export const instant = false;
 
@@ -26,8 +28,27 @@ export default async function DashboardLayout({
     redirect("/verify-email");
   }
 
+  // Owners see how long the free trial has left, or that it has ended.
+  let trialNotice: { daysLeft: number } | { ended: true } | null = null;
+  if (session.role === "owner") {
+    const billing = await getOrganizationEntitlements(session.organization.id);
+    if (billing && !billing.entitlements.pilotMode) {
+      const daysLeft = trialDaysLeft({
+        plan: billing.org.subscriptionPlan,
+        status: billing.org.subscriptionStatus,
+        trialEndsAt: billing.org.trialEndsAt,
+        stripeSubscriptionId: billing.org.stripeSubscriptionId,
+      });
+      if (!billing.entitlements.hasActiveAccess) {
+        trialNotice = { ended: true };
+      } else if (daysLeft !== null) {
+        trialNotice = { daysLeft };
+      }
+    }
+  }
+
   return (
-    <AppShell session={session} isAdmin={isAdminEmail(session.user.email)}>
+    <AppShell session={session} isAdmin={isAdminEmail(session.user.email)} trialNotice={trialNotice}>
       {children}
     </AppShell>
   );

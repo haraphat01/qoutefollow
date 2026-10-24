@@ -22,19 +22,19 @@ import {
 const plan = PLAN_CATALOG.starter;
 
 export function PlanPicker({
-  currentPlan,
   hasActiveSubscription,
+  freeTrial,
 }: {
-  currentPlan: string;
   hasActiveSubscription: boolean;
+  /** Set while on the free trial (no subscription yet). */
+  freeTrial: { endsOn: string; keepsTrial: boolean } | null;
 }) {
   const [pending, startTransition] = useTransition();
   const [loading, setLoading] = useState(false);
 
-  const isCurrent =
-    currentPlan === "starter" ||
-    currentPlan === "growth" ||
-    currentPlan === "pro";
+  // Being on the free trial isn't being subscribed: trial users can upgrade.
+  const isCurrent = hasActiveSubscription;
+
 
   async function subscribe() {
     setLoading(true);
@@ -99,10 +99,17 @@ export function PlanPicker({
             ? "Current plan"
             : loading
               ? "Opening…"
-              : hasActiveSubscription
-                ? "Manage subscription"
+              : freeTrial
+                ? "Upgrade now"
                 : "Subscribe"}
         </Button>
+        {freeTrial && !isCurrent ? (
+          <p className="text-center text-xs text-muted-foreground">
+            {freeTrial.keepsTrial
+              ? `You keep your free trial: the first charge is on ${freeTrial.endsOn}, when it ends.`
+              : "Your trial ends within two days, so billing starts today."}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

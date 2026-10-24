@@ -229,13 +229,40 @@ function AccountMenu({ session }: { session: AppSession }) {
   );
 }
 
+function TrialNotice({ notice, onBilling }: { notice: { daysLeft: number } | { ended: true }; onBilling: boolean }) {
+  const ended = "ended" in notice;
+  return (
+    <div
+      role={ended ? "alert" : "status"}
+      className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 py-2 text-center text-sm ${
+        ended ? "bg-amber-100 text-amber-950" : "bg-primary/10 text-foreground"
+      }`}
+    >
+      <span>
+        {ended
+          ? "Your free trial has ended. Follow-ups and quote emails are paused until you subscribe."
+          : notice.daysLeft === 1
+            ? "Your free trial ends within a day."
+            : `${notice.daysLeft} days left in your free trial.`}
+      </span>
+      {onBilling ? null : (
+        <Link href="/settings/billing" className="font-semibold text-primary underline-offset-4 hover:underline">
+          {ended ? "Subscribe" : "Upgrade now"}
+        </Link>
+      )}
+    </div>
+  );
+}
+
 export function AppShell({
   session,
   isAdmin,
+  trialNotice = null,
   children,
 }: {
   session: AppSession;
   isAdmin: boolean;
+  trialNotice?: { daysLeft: number } | { ended: true } | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -338,6 +365,7 @@ export function AppShell({
           <AccountMenu session={session} />
         </header>
 
+        {trialNotice ? <TrialNotice notice={trialNotice} onBilling={pathname === "/settings/billing"} /> : null}
         <main className="mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-5 md:px-8 md:py-9 lg:px-10">
           {children}
         </main>

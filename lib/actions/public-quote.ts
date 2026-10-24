@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 
+import { clientIp } from "@/lib/auth/rate-limit";
 import { acceptQuote } from "@/lib/quotes/accept-quote";
 
 export type AcceptState = { error?: string; accepted?: boolean };
@@ -20,7 +21,7 @@ export async function acceptQuoteAction(
     publicToken,
     signerName: String(formData.get("signerName") ?? ""),
     optionIndex: Number(formData.get("optionIndex") ?? 0),
-    ip: requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ?? requestHeaders.get("x-real-ip"),
+    ip: clientIp(requestHeaders),
     userAgent: requestHeaders.get("user-agent"),
   });
   if (!result.ok) {

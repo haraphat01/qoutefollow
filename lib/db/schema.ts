@@ -160,6 +160,23 @@ export const authTokenTypeEnum = pgEnum("auth_token_type", [
   "team_invite",
 ]);
 
+/** Failed sign-ins, for rate limiting. Cleared for an email on success. */
+export const signInAttempts = pgTable(
+  "sign_in_attempts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    email: text("email").notNull(),
+    ip: text("ip"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("sign_in_attempts_email_idx").on(table.email, table.createdAt),
+    index("sign_in_attempts_ip_idx").on(table.ip, table.createdAt),
+  ],
+);
+
 /** Single-use emailed links. Only the SHA-256 of the token is stored. */
 export const authTokens = pgTable("auth_tokens", {
   id: uuid("id").defaultRandom().primaryKey(),

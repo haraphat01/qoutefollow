@@ -83,6 +83,8 @@ export async function processQuoteDocument(documentId: string) {
           expirationDate: null,
           notes: null,
           confidence: "low",
+          lineItems: [],
+          taxRate: null,
         }),
       })
       .where(eq(quoteDocuments.id, documentId));

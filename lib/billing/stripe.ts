@@ -28,8 +28,14 @@ export async function createCheckoutSession(input: {
   customerEmail: string;
   organizationId: string;
   plan: PlanId;
+  /** Keep the rest of a free trial when upgrading early. */
+  trialEndsAt?: Date | null;
 }) {
   const stripe = getStripe();
+  // Checkout only accepts a trial end at least 48 hours away; closer than
+  // that, billing simply starts now.
+  const keepTrial =
+    input.trialEndsAt && input.trialEndsAt.getTime() - Date.now() >= 48 * 60 * 60 * 1000;
   const priceId = stripePriceIdForPlan(input.plan);
 
   if (!priceId) {
@@ -48,6 +54,7 @@ export async function createCheckoutSession(input: {
       plan: input.plan,
     },
     subscription_data: {
+      ...(keepTrial ? { trial_end: Math.floor(input.trialEndsAt!.getTime() / 1000) } : {}),
       metadata: {
         organizationId: input.organizationId,
         plan: input.plan,

@@ -11,6 +11,18 @@ export const extractedQuoteFieldsSchema = z.object({
   expirationDate: z.string().nullable(),
   notes: z.string().nullable(),
   confidence: z.enum(["high", "medium", "low"]),
+  /** Each priced line; empty when the estimate only shows a total. */
+  lineItems: z
+    .array(
+      z.object({
+        description: z.string(),
+        quantity: z.number(),
+        unitPrice: z.number(),
+      }),
+    )
+    .default([]),
+  /** Percentage, e.g. 8.25. Null when the estimate doesn't state one. */
+  taxRate: z.number().nullable().default(null),
 });
 
 export type ExtractedQuoteFields = z.infer<typeof extractedQuoteFieldsSchema>;
@@ -19,7 +31,9 @@ const systemPrompt = `You extract structured fields from contractor estimate PDF
 Return JSON only. Use null when a field is missing or uncertain.
 amount should be a number in USD without currency symbols.
 quoteDate and expirationDate should be ISO dates (YYYY-MM-DD) when possible.
-customerEmail must be a valid email or null.`;
+customerEmail must be a valid email or null.
+lineItems: every priced line of work or material, with quantity (1 if not shown) and unitPrice in USD. Leave out subtotal, discount, tax and total lines. Return an empty array if the estimate only shows a total.
+taxRate: the sales tax percentage if stated (8.25 for 8.25%), otherwise null.`;
 
 export async function extractQuoteFieldsFromText(text: string) {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -54,6 +68,20 @@ export async function extractQuoteFieldsFromText(text: string) {
             expirationDate: { type: ["string", "null"] },
             notes: { type: ["string", "null"] },
             confidence: { type: "string", enum: ["high", "medium", "low"] },
+            lineItems: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  description: { type: "string" },
+                  quantity: { type: "number" },
+                  unitPrice: { type: "number" },
+                },
+                required: ["description", "quantity", "unitPrice"],
+              },
+            },
+            taxRate: { type: ["number", "null"] },
           },
           required: [
             "customerName",
@@ -65,6 +93,8 @@ export async function extractQuoteFieldsFromText(text: string) {
             "expirationDate",
             "notes",
             "confidence",
+            "lineItems",
+            "taxRate",
           ],
         },
       },

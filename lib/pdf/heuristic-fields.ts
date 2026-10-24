@@ -40,6 +40,41 @@ function findAmount(text: string) {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
+const NUMBER = String.raw`\$?\s?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)`;
+// "Description  qty  unit price  amount" — the common estimate table row.
+const ITEM_ROW = new RegExp(String.raw`^(.*?[A-Za-z].*?)\s+([0-9]+(?:\.[0-9]+)?)\s+${NUMBER}\s+${NUMBER}\s*$`);
+const SUMMARY_LINE = /\b(sub\s?total|total|tax|discount|balance|deposit|amount due|paid)\b/i;
+
+const toNumber = (value: string) => Number(value.replace(/,/g, ""));
+
+/** Table rows whose quantity × unit price matches their amount. */
+export function extractLineItems(text: string) {
+  const items: { description: string; quantity: number; unitPrice: number }[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/\s+/g, " ").trim();
+    if (!line || SUMMARY_LINE.test(line)) {
+      continue;
+    }
+    const match = line.match(ITEM_ROW);
+    if (!match) {
+      continue;
+    }
+    const quantity = Number(match[2]);
+    const unitPrice = toNumber(match[3]);
+    const amount = toNumber(match[4]);
+    if (quantity > 0 && Math.abs(quantity * unitPrice - amount) <= 0.01 + amount * 0.001) {
+      items.push({ description: match[1].trim().slice(0, 300), quantity, unitPrice });
+    }
+  }
+  return items;
+}
+
+function findTaxRate(text: string) {
+  const match = text.match(/\btax[^\n%]{0,30}?([0-9]{1,2}(?:\.[0-9]{1,3})?)\s?%/i);
+  const rate = match ? Number(match[1]) : null;
+  return rate !== null && rate > 0 && rate <= 30 ? rate : null;
+}
+
 /**
  * Best-effort extraction used when AI extraction is unavailable. Every field
  * is still reviewed and confirmed by the contractor before saving.
@@ -92,5 +127,7 @@ export function extractQuoteFieldsHeuristically(
     expirationDate: findLabeledDate(text, "valid until|expires|expiration|expiry"),
     notes: null,
     confidence: found >= 3 ? "medium" : "low",
+    lineItems: extractLineItems(text),
+    taxRate: findTaxRate(text),
   };
 }

@@ -6,6 +6,9 @@ import { confirmImportedQuoteAction } from "@/lib/actions/pdf-import";
 import type { ActionState } from "@/lib/actions/auth";
 import type { ExtractedQuoteFields } from "@/lib/ai/extract-quote-fields";
 import { QuotePricingEditor } from "@/components/quotes/line-items-editor";
+import { computeTotals } from "@/lib/quotes/pricing";
+
+const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +36,28 @@ export function ImportConfirmForm({
   );
 
   const today = new Date().toISOString().slice(0, 10);
+
+  // Start from the PDF's own line items when we found them, else one line for its total.
+  const taxRate = fields.taxRate ?? 0;
+  const items =
+    fields.lineItems.length > 0
+      ? fields.lineItems.map((item) => ({
+          description: item.description.slice(0, 300),
+          quantity: item.quantity > 0 ? item.quantity : 1,
+          unitPrice: item.unitPrice,
+        }))
+      : [
+          {
+            description: (fields.jobDescription ?? "Estimate total").slice(0, 300),
+            quantity: 1,
+            unitPrice: fields.amount ?? ("" as const),
+          },
+        ];
+  const initialPricing = { options: [{ name: null, items }], discount: null, taxRate };
+  const extractedTotal =
+    fields.lineItems.length > 0 ? computeTotals(fields.lineItems, null, taxRate).total : 0;
+  const itemsMismatch =
+    fields.lineItems.length > 0 && fields.amount !== null && Math.abs(extractedTotal - fields.amount) > 1;
 
   return (
     <form action={action} className="space-y-7">
@@ -89,23 +114,14 @@ export function ImportConfirmForm({
         </div>
         <div className="space-y-2">
           <p className="text-sm font-medium">Pricing</p>
+          {itemsMismatch ? (
+            <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+              The items below add up to {money.format(extractedTotal)}, but the PDF&apos;s total is{" "}
+              {money.format(fields.amount ?? 0)}. Check them against the original before saving.
+            </p>
+          ) : null}
           <QuotePricingEditor
-            initial={{
-              options: [
-                {
-                  name: null,
-                  items: [
-                    {
-                      description: (fields.jobDescription ?? "Estimate total").slice(0, 300),
-                      quantity: 1,
-                      unitPrice: fields.amount ?? "",
-                    },
-                  ],
-                },
-              ],
-              discount: null,
-              taxRate: 0,
-            }}
+            initial={initialPricing}
             error={state.fieldErrors?.pricing?.[0]}
           />
         </div>

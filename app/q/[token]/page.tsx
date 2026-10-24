@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckCircle2, Download, Mail, Phone } from "lucide-react";
 
@@ -214,7 +215,10 @@ export default async function PublicQuotePage({
           </div>
         </aside>
       </main>
-      <footer className="pb-8 text-center text-xs text-[#8a968e]">Sent with QuoteFollow</footer>
+      <footer className="pb-8 text-center text-xs text-[#8a968e]">
+        Sent with QuoteFollow ·{" "}
+        <Link href="/privacy" className="underline-offset-4 hover:underline">Privacy</Link>
+      </footer>
     </div>
   );
 }

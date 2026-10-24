@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/auth/session";
 import { createPortalSession } from "@/lib/billing/portal";
 import { getOrganizationBilling } from "@/lib/billing/organization";
 import type { PlanId } from "@/lib/billing/plans";
-import { isStripeConfigured } from "@/lib/billing/entitlements";
+import { hasPaidSubscription, isStripeConfigured } from "@/lib/billing/entitlements";
 import { createCheckoutSession } from "@/lib/billing/stripe";
 
 type BillingActionResult = { url?: string; error?: string };
@@ -96,10 +96,10 @@ export async function startCheckoutAction(
     return { error: "Organization not found." };
   }
 
-  if (org.stripeSubscriptionId && org.subscriptionStatus === "active") {
+  if (hasPaidSubscription(org)) {
     return {
       error:
-        "You already have an active subscription. Use “Change plan” to switch in the Stripe portal.",
+        "You already have a subscription. Use “Manage in Stripe” to change it.",
     };
   }
 
@@ -108,6 +108,7 @@ export async function startCheckoutAction(
     customerEmail: session.user.email,
     organizationId: session.organization.id,
     plan,
+    trialEndsAt: org.subscriptionStatus === "trialing" ? org.trialEndsAt : null,
   });
 
   if (!checkout.url) {

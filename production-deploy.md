@@ -108,6 +108,9 @@ Set these on the **Coolify application** (and on the **scheduled worker** resour
 | `OPENAI_API_KEY` | Recommended | PDF import + inbound reply classification |
 | `UNSUBSCRIBE_SECRET` | Recommended | Defaults to `CRON_SECRET` if unset |
 | `ADMIN_EMAILS` | Optional | Comma-separated emails that can open `/admin` (platform admin) |
+| `LEGAL_OPERATOR_NAME` | Recommended | Company named in the Terms and Privacy Policy (default "Pencil Digital Services") |
+| `LEGAL_CONTACT_EMAIL` | Recommended | Contact email shown on the legal pages (defaults to the first `ADMIN_EMAILS` entry) |
+| `LEGAL_JURISDICTION` | Recommended | Governing law, e.g. "the State of Texas, USA" |
 | `STRIPE_SECRET_KEY` | For billing | Live key in production |
 | `STRIPE_WEBHOOK_SECRET` | For billing | Stripe webhook signing secret |
 | `STRIPE_PRICE_STARTER` | For billing | Price ID ($39/mo) |

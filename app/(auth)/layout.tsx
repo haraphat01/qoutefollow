@@ -42,7 +42,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <Link href="/" className="inline-flex items-center gap-1 text-xs font-medium text-[#6f8074]"><ArrowLeft className="size-3.5" /> Home</Link>
         </div>
         <div className="w-full max-w-[460px]">{children}</div>
-        <p className="mt-7 text-center text-xs text-[#89938b]">A simpler way to stay on top of every estimate.</p>
+        <p className="mt-7 text-center text-xs text-[#89938b]">
+          <Link href="/terms" className="hover:underline">Terms</Link> · <Link href="/privacy" className="hover:underline">Privacy</Link>
+        </p>
       </main>
     </div>
   );
