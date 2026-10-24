@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const create = vi.fn(async (params: unknown) => ({ url: "https://checkout.stripe.test", params }));
+const retrieveProduct = vi.fn(async () => ({ default_price: "price_from_product" }));
 vi.mock("stripe", () => ({
   default: class {
     checkout = { sessions: { create } };
+    products = { retrieve: retrieveProduct };
   },
 }));
 
@@ -59,5 +61,27 @@ describe("free trial and early upgrade", () => {
 describe("ended trials", () => {
   it("aren't counted as a trial with days left", () => {
     expect(trialDaysLeft({ plan: "starter", status: "trialing", stripeSubscriptionId: null, trialEndsAt: new Date(Date.now() - 1000) })).toBeNull();
+  });
+});
+
+describe("price configuration", () => {
+  beforeEach(() => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_x";
+    create.mockClear();
+  });
+
+  it("uses a product's default price when given a prod_ ID", async () => {
+    process.env.STRIPE_PRICE_STARTER = "prod_abc";
+    await createCheckoutSession({ customerEmail: "a@b.co", organizationId: "org", plan: "starter" });
+    const params = create.mock.calls[0][0] as { line_items: { price: string }[] };
+    expect(retrieveProduct).toHaveBeenCalledWith("prod_abc");
+    expect(params.line_items[0].price).toBe("price_from_product");
+  });
+
+  it("uses a price ID as-is", async () => {
+    process.env.STRIPE_PRICE_STARTER = "price_direct";
+    await createCheckoutSession({ customerEmail: "a@b.co", organizationId: "org", plan: "starter" });
+    const params = create.mock.calls[0][0] as { line_items: { price: string }[] };
+    expect(params.line_items[0].price).toBe("price_direct");
   });
 });

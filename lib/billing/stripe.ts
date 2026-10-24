@@ -23,6 +23,26 @@ export function appUrl(path = "") {
   return `${base}${path}`;
 }
 
+/**
+ * STRIPE_PRICE_STARTER should be a price ID (price_…), but a product ID
+ * (prod_…) is an easy mix-up; accept it and use the product's default price.
+ */
+async function resolvePriceId(configured: string | undefined) {
+  if (!configured) {
+    throw new Error("STRIPE_PRICE_STARTER is not set");
+  }
+  if (!configured.startsWith("prod_")) {
+    return configured;
+  }
+  const product = await getStripe().products.retrieve(configured);
+  const defaultPrice = product.default_price;
+  const id = typeof defaultPrice === "string" ? defaultPrice : defaultPrice?.id;
+  if (!id) {
+    throw new Error(`Product ${configured} has no default price; set STRIPE_PRICE_STARTER to its price_… ID`);
+  }
+  return id;
+}
+
 export async function createCheckoutSession(input: {
   customerId?: string | null;
   customerEmail: string;
@@ -36,11 +56,7 @@ export async function createCheckoutSession(input: {
   // that, billing simply starts now.
   const keepTrial =
     input.trialEndsAt && input.trialEndsAt.getTime() - Date.now() >= 48 * 60 * 60 * 1000;
-  const priceId = stripePriceIdForPlan(input.plan);
-
-  if (!priceId) {
-    throw new Error(`Stripe price is not configured for plan ${input.plan}`);
-  }
+  const priceId = await resolvePriceId(stripePriceIdForPlan(input.plan));
 
   return stripe.checkout.sessions.create({
     mode: "subscription",
