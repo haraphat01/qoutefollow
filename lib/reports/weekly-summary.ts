@@ -93,7 +93,7 @@ export async function sendWeeklySummary(organizationId: string, options: { to?: 
       url: appUrl(`/quotes/${row.id}`),
     })),
     dashboardUrl: appUrl("/dashboard"),
-    settingsUrl: appUrl("/settings/email"),
+    settingsUrl: appUrl("/settings#sending"),
   });
 
   const recipients = options.to

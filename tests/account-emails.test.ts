@@ -34,7 +34,7 @@ describe("account emails", () => {
   it("includes the business and setup links in the welcome email", () => {
     const email = buildWelcomeEmail({ name: "Ana", businessName: "Summit Roofing" });
     expect(email.text).toContain("Summit Roofing is ready");
-    expect(email.text).toContain("/settings/email");
+    expect(email.text).toContain("/settings");
   });
 
   it("summarises customer replies and mentions with a quote link", () => {

@@ -101,7 +101,7 @@ export function EmailSettingsForm({
           id="emailSignature"
           name="emailSignature"
           rows={4}
-          placeholder="Mike Rivera\nOwner, Summit Roofing"
+          placeholder={"Mike Rivera\nOwner, Summit Roofing"}
           defaultValue={emailSignature ?? ""}
         />
         <p className="text-xs text-muted-foreground">

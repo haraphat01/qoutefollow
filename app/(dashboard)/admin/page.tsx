@@ -24,6 +24,8 @@ import {
 import { getAdminSession } from "@/lib/auth/admin";
 import { formatPlanLabel, formatSubscriptionStatus } from "@/lib/billing/labels";
 import { formatDate } from "@/lib/format";
+import { DeliverabilityChecklist } from "@/components/settings/deliverability-checklist";
+import { RESEND_DOMAIN_DNS_STEPS } from "@/lib/email/sending-domain";
 import {
   getPlatformStats,
   listAdminActions,
@@ -35,6 +37,7 @@ const TABS = [
   { id: "users", label: "Users" },
   { id: "workspaces", label: "Workspaces" },
   { id: "log", label: "Admin log" },
+  { id: "platform", label: "Platform" },
 ] as const;
 
 type Tab = (typeof TABS)[number]["id"];
@@ -94,6 +97,8 @@ export default async function AdminPage({
 
       {tab === "log" ? (
         <AdminLog />
+      ) : tab === "platform" ? (
+        <PlatformSetup />
       ) : (
         <Card className="gap-0">
           <CardHeader className="pb-4">
@@ -238,6 +243,50 @@ async function WorkspacesTable({ search, suspendedOnly }: { search: string; susp
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+function PlatformSetup() {
+  return (
+    <div className="space-y-6">
+      <Card className="gap-0">
+        <CardHeader>
+          <CardTitle>Email setup checklist</CardTitle>
+          <CardDescription>Server settings every workspace depends on (Coolify environment variables).</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <DeliverabilityChecklist
+            emailFrom={process.env.EMAIL_FROM}
+            hasResendKey={Boolean(process.env.RESEND_API_KEY)}
+            hasWebhookSecret={Boolean(process.env.RESEND_WEBHOOK_SECRET)}
+          />
+        </CardContent>
+      </Card>
+      <Card className="gap-0">
+        <CardHeader>
+          <CardTitle>Sending domain (Resend)</CardTitle>
+          <CardDescription>One-time setup so email comes from your domain.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-0">
+          <ol className="list-decimal space-y-3 pl-5 text-sm leading-relaxed text-muted-foreground">
+            {RESEND_DOMAIN_DNS_STEPS.map((step) => (
+              <li key={step.title}>
+                <span className="font-medium text-foreground">{step.title}</span>
+                <p className="mt-1">{step.detail}</p>
+              </li>
+            ))}
+          </ol>
+          <a
+            href="https://resend.com/docs/dashboard/domains/introduction"
+            className="text-sm font-semibold text-primary hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Resend domain documentation
+          </a>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

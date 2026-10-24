@@ -51,7 +51,7 @@ export async function updateMailingComplianceAction(
     })
     .where(eq(organizations.id, session.organization.id));
 
-  revalidatePath("/settings/email");
+  revalidatePath("/settings");
   return {};
 }
 
@@ -85,7 +85,7 @@ export async function updateSendTimezoneAction(
     })
     .where(eq(organizations.id, session.organization.id));
 
-  revalidatePath("/settings/email");
+  revalidatePath("/settings");
   revalidatePath("/dashboard");
   return {};
 }
@@ -112,7 +112,7 @@ export async function removeEmailSuppressionAction(
       ),
     );
 
-  revalidatePath("/settings/email");
+  revalidatePath("/settings");
   return {};
 }
 
@@ -129,7 +129,7 @@ export async function updateWeeklySummaryAction(enabled: boolean): Promise<Actio
     .update(organizations)
     .set({ weeklySummaryEnabled: enabled, updatedAt: new Date() })
     .where(eq(organizations.id, session.organization.id));
-  revalidatePath("/settings/email");
+  revalidatePath("/settings");
   return { success: true };
 }
 

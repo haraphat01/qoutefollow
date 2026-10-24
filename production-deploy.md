@@ -147,13 +147,9 @@ Store `CRON_SECRET` in the scheduled task env. Do **not** run this and `worker:f
 
 ## 7. Trust, compliance & deliverability (in-app)
 
-After deploy, each organization owner should open **Settings → Email** in QuoteFollow and:
+The platform admin checks **Admin → Platform**: the email setup checklist (Resend key, branded domain, webhooks, secrets, reply tracking) and the Resend domain DNS steps.
 
-1. Complete the **deliverability checklist** (Resend key, webhooks, branded domain).
-2. Follow the **Resend domain DNS** steps so `EMAIL_FROM` uses a verified domain.
-3. Save a **CAN-SPAM mailing address** (included in every follow-up footer).
-
-Bounces, complaints, and unsubscribes appear under **Suppressed addresses** with guidance on when it is safe to remove a block.
+Each workspace owner then opens **Settings** in QuoteFollow and fills in the **Business profile** (contact details, logo and the **mailing address** required by CAN-SPAM; a banner shows until it's set). Unsubscribes and bounces are listed under **Settings → Unsubscribed customers**.
 
 Each quote detail page includes an **Email audit trail** (sent, delivered, bounced, etc.).
 
@@ -202,9 +198,9 @@ Without `INBOUND_REPLY_DOMAIN`, replies go straight to the organization's reply-
 ## Quotes customers can accept online
 
 - Every sent quote links to `/q/<token>`, a public page where the customer compares Good/Better/Best options, downloads the PDF, and accepts by typing their name. Acceptance records name, time, IP and browser, stops follow-ups, alerts owners and the assignee, and emails the customer a signed PDF.
-- Quote emails attach a PDF; follow-ups link to the online quote. Uploaded logos (Settings → Quoting) appear on both and are served from `/api/logo/<orgId>`.
+- Quote emails attach a PDF; follow-ups link to the online quote. Uploaded logos (Settings → Business profile) appear on both and are served from `/api/logo/<orgId>`.
 - **Email opens and clicks:** in Resend, open **Domains → your domain → Configuration** and turn on open and click tracking (Resend asks for a tracking subdomain). The webhook already listens for `email.opened` and `email.clicked`. Online quote views are tracked without this.
-- **Weekly summary:** the follow-up worker (or the cron route) also sends each workspace's owners a summary on Monday from 8am in its send time zone. Owners can switch it off or send a preview under Settings → Email.
+- **Weekly summary:** the follow-up worker (or the cron route) also sends each workspace's owners a summary on Monday from 8am in its send time zone. Owners can switch it off or send a preview under Settings → Sending.
 - Exports: `/api/export/quotes` and `/api/export/customers` (signed-in members only).
 
 ## Platform admin

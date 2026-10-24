@@ -112,7 +112,7 @@ export function buildWelcomeEmail(input: {
 }): AccountEmail {
   const subject = `Welcome to QuoteFollow, ${input.name}`;
   const steps = [
-    { label: "Add your mailing address and reply-to email", url: appUrl("/settings/email") },
+    { label: "Add your logo, mailing address and reply-to email", url: appUrl("/settings") },
     { label: "Review your follow-up sequence", url: appUrl("/settings/sequences") },
     { label: "Add your first quote or import a PDF estimate", url: appUrl("/quotes/new") },
   ];
@@ -403,7 +403,7 @@ export function buildWeeklySummaryEmail(input: {
     html: brandEmail({
       subject,
       preheader: input.stats.map(([label, value]) => `${label}: ${value}`).slice(0, 3).join(" · "),
-      reason: "You're receiving this weekly summary as a workspace owner. Turn it off under Settings → Email.",
+      reason: "You're receiving this weekly summary as a workspace owner. Turn it off under Settings → Sending.",
       body:
         heading("Your week in quotes") +
         panel(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${statRows}</table>`, "Last 7 days") +

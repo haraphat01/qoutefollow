@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { EmailSettingsForm } from "@/components/settings/email-settings-form";
 import { SequenceEditor } from "@/components/settings/sequence-editor";
 import { SequenceManager } from "@/components/settings/sequence-manager";
 import {
@@ -11,7 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getSession } from "@/lib/auth/session";
-import { getOrganizationEmailSettings } from "@/lib/queries/organization-settings";
 import {
   getDefaultSequence,
   getSequenceWithSteps,
@@ -29,10 +27,7 @@ export default async function FollowUpSequencesPage({
   }
 
   const query = await searchParams;
-  const [allSequences, emailSettings] = await Promise.all([
-    listOrganizationSequences(session.organization.id),
-    getOrganizationEmailSettings(session.organization.id),
-  ]);
+  const allSequences = await listOrganizationSequences(session.organization.id);
 
   const activeId =
     query.sequence ??
@@ -103,24 +98,10 @@ export default async function FollowUpSequencesPage({
         </CardContent>
       </Card>
 
-      <Card className="gap-0">
-        <CardHeader>
-          <CardTitle>Email defaults</CardTitle>
-          <CardDescription>
-            Signature and phone merge into every follow-up alongside your
-            templates.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <EmailSettingsForm
-            isOwner={session.role === "owner"}
-            businessName={session.organization.name}
-            businessPhone={emailSettings?.businessPhone ?? null}
-            emailSignature={emailSettings?.emailSignature ?? null}
-            replyEmail={emailSettings?.replyEmail ?? null}
-          />
-        </CardContent>
-      </Card>
+      <p className="text-sm text-muted-foreground">
+        Your business name, signature, phone and reply-to email are added to every follow-up. Change them in{" "}
+        <Link href="/settings#business" className="font-semibold text-primary hover:underline">Settings</Link>.
+      </p>
 
       <Link
         href="/dashboard"

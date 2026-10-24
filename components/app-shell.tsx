@@ -13,11 +13,10 @@ import {
   KeyRound,
   LayoutDashboard,
   LogOut,
-  Mail,
   Menu,
   PanelsTopLeft,
+  Settings,
   ShieldCheck,
-  Tags,
   Users,
   UsersRound,
   X,
@@ -41,10 +40,9 @@ const NAV = [
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/settings/sequences", label: "Follow-ups", icon: PanelsTopLeft },
-  { href: "/settings/quoting", label: "Quoting", icon: Tags },
-  { href: "/settings/email", label: "Email", icon: Mail },
   { href: "/settings/team", label: "Team", icon: UsersRound },
   { href: "/settings/billing", label: "Billing", icon: CreditCard },
+  { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
 const ADMIN_NAV = { href: "/admin", label: "Admin", icon: ShieldCheck } as const;
@@ -54,6 +52,11 @@ type NavItem = (typeof NAV)[number] | typeof ADMIN_NAV;
 function isActiveNavItem(pathname: string, href: string) {
   if (href === "/quotes") {
     return pathname === href || (pathname.startsWith(`${href}/`) && !pathname.startsWith("/quotes/import"));
+  }
+
+  // The other settings pages have their own links.
+  if (href === "/settings") {
+    return pathname === href;
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);

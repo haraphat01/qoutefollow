@@ -37,7 +37,8 @@ export function DeliverabilityChecklist({
   emailFrom: string | undefined;
   hasResendKey: boolean;
   hasWebhookSecret: boolean;
-  mailingAddress: string | null;
+  /** Omit on the platform view, where there's no single workspace. */
+  mailingAddress?: string | null;
 }) {
   const parsed = parseEmailFromAddress(emailFrom);
   const publicProvider =
@@ -69,10 +70,22 @@ export function DeliverabilityChecklist({
         label="Bounce & complaint webhooks"
         detail="RESEND_WEBHOOK_SECRET enables automatic suppressions when mail fails."
       />
+      {mailingAddress !== undefined ? (
+        <Item
+          done={Boolean(mailingAddress?.trim())}
+          label="CAN-SPAM mailing address"
+          detail="Physical business address appears in the footer of follow-up emails."
+        />
+      ) : null}
       <Item
-        done={Boolean(mailingAddress?.trim())}
-        label="CAN-SPAM mailing address"
-        detail="Physical business address appears in the footer of follow-up emails."
+        done={Boolean(process.env.CRON_SECRET || process.env.UNSUBSCRIBE_SECRET)}
+        label="Unsubscribe and cron secrets"
+        detail="Set UNSUBSCRIBE_SECRET (and CRON_SECRET) so unsubscribe links can be created; without one, customer emails fail."
+      />
+      <Item
+        done={Boolean(process.env.INBOUND_REPLY_DOMAIN)}
+        label="Reply tracking"
+        detail="INBOUND_REPLY_DOMAIN lets customer replies pause follow-ups automatically."
       />
     </ul>
   );

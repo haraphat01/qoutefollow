@@ -53,7 +53,7 @@ export async function savePriceBookItemAction(
       unitPrice: parsed.data.unitPrice.toFixed(2),
     });
   }
-  revalidatePath("/settings/quoting");
+  revalidatePath("/settings");
   return { success: true };
 }
 
@@ -65,7 +65,7 @@ export async function deletePriceBookItemAction(id: string): Promise<ActionState
   await db
     .delete(priceBookItems)
     .where(and(eq(priceBookItems.id, id), eq(priceBookItems.organizationId, session.organization.id)));
-  revalidatePath("/settings/quoting");
+  revalidatePath("/settings");
   return { success: true };
 }
 
@@ -93,7 +93,7 @@ export async function saveQuoteAsTemplateAction(
     jobType: document.quote.jobType,
     pricing: JSON.stringify(toPricingDraft(document)),
   });
-  revalidatePath("/settings/quoting");
+  revalidatePath("/settings");
   revalidatePath("/quotes/new");
   return { success: true };
 }
@@ -106,7 +106,7 @@ export async function deleteQuoteTemplateAction(id: string): Promise<ActionState
   await db
     .delete(quoteTemplates)
     .where(and(eq(quoteTemplates.id, id), eq(quoteTemplates.organizationId, session.organization.id)));
-  revalidatePath("/settings/quoting");
+  revalidatePath("/settings");
   revalidatePath("/quotes/new");
   return { success: true };
 }
@@ -130,7 +130,7 @@ export async function updateQuotingDefaultsAction(
     .update(organizations)
     .set({ defaultTaxRate: rate.data.toFixed(3), updatedAt: new Date() })
     .where(eq(organizations.id, session.organization.id));
-  revalidatePath("/settings/quoting");
+  revalidatePath("/settings");
   return { success: true };
 }
 
@@ -180,7 +180,7 @@ export async function uploadLogoAction(
     .update(organizations)
     .set({ logoPath: storagePath, updatedAt: new Date() })
     .where(eq(organizations.id, session.organization.id));
-  revalidatePath("/settings/quoting");
+  revalidatePath("/settings");
   return { success: true };
 }
 
@@ -196,6 +196,6 @@ export async function removeLogoAction(): Promise<ActionState> {
     .update(organizations)
     .set({ logoPath: null, updatedAt: new Date() })
     .where(eq(organizations.id, session.organization.id));
-  revalidatePath("/settings/quoting");
+  revalidatePath("/settings");
   return { success: true };
 }
