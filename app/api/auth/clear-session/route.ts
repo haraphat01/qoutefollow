@@ -1,18 +1,17 @@
-import { NextResponse } from "next/server";
-
 import { SESSION_COOKIE } from "@/lib/auth/constants";
 import { getSession } from "@/lib/auth/session";
+import { redirectToPath } from "@/lib/http";
 
 /**
  * Drops a cookie whose session no longer exists (expired, banned or deleted)
  * and sends the visitor to sign in. A valid session is left untouched, so
  * this can't be used to sign someone out.
  */
-export async function GET(request: Request) {
+export async function GET() {
   if (await getSession()) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return redirectToPath("/dashboard");
   }
-  const response = NextResponse.redirect(new URL("/login", request.url));
+  const response = redirectToPath("/login");
   response.cookies.delete(SESSION_COOKIE);
   return response;
 }
