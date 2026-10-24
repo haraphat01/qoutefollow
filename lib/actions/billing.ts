@@ -50,20 +50,27 @@ async function portalUrlForOwner(
     return { error: "No active subscription found." };
   }
 
-  const portal = await createPortalSession(
-    org.stripeCustomerId,
-    flow.type === "subscription_update"
-      ? {
-          type: "subscription_update",
-          subscriptionId: org.stripeSubscriptionId!,
-        }
-      : flow.type === "subscription_cancel"
+  let portal: Awaited<ReturnType<typeof createPortalSession>>;
+  try {
+    portal = await createPortalSession(
+      org.stripeCustomerId,
+      flow.type === "subscription_update"
         ? {
-            type: "subscription_cancel",
+            type: "subscription_update",
             subscriptionId: org.stripeSubscriptionId!,
           }
-        : flow,
-  );
+        : flow.type === "subscription_cancel"
+          ? {
+              type: "subscription_cancel",
+              subscriptionId: org.stripeSubscriptionId!,
+            }
+          : flow,
+    );
+  } catch (error) {
+    console.error("Stripe portal failed", error);
+    const reason = error instanceof Error ? error.message : "unknown error";
+    return { error: `Stripe couldn't open the billing portal: ${reason}` };
+  }
 
   if (!portal.url) {
     return { error: "Could not open the billing portal." };
@@ -103,13 +110,22 @@ export async function startCheckoutAction(
     };
   }
 
-  const checkout = await createCheckoutSession({
-    customerId: org.stripeCustomerId,
-    customerEmail: session.user.email,
-    organizationId: session.organization.id,
-    plan,
-    trialEndsAt: org.subscriptionStatus === "trialing" ? org.trialEndsAt : null,
-  });
+  let checkout: Awaited<ReturnType<typeof createCheckoutSession>>;
+  try {
+    checkout = await createCheckoutSession({
+      customerId: org.stripeCustomerId,
+      customerEmail: session.user.email,
+      organizationId: session.organization.id,
+      plan,
+      trialEndsAt: org.subscriptionStatus === "trialing" ? org.trialEndsAt : null,
+    });
+  } catch (error) {
+    // Usually configuration: a missing/mismatched price ID or a test key
+    // with a live price. Show Stripe's reason instead of crashing the page.
+    console.error("Stripe checkout failed", error);
+    const reason = error instanceof Error ? error.message : "unknown error";
+    return { error: `Stripe couldn't start checkout: ${reason}` };
+  }
 
   if (!checkout.url) {
     return { error: "Could not start checkout." };

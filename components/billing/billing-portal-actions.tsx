@@ -15,7 +15,14 @@ import { Button } from "@/components/ui/button";
 async function goToPortal(
   action: () => Promise<{ url?: string; error?: string }>,
 ) {
-  const result = await action();
+  let result: { url?: string; error?: string };
+  try {
+    result = await action();
+  } catch {
+    // A network or server failure shouldn't take the whole page down.
+    toast.error("Couldn't reach the billing service. Try again in a moment.");
+    return;
+  }
   if (result.error) {
     toast.error(result.error);
     return;

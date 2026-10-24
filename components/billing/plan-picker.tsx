@@ -38,25 +38,25 @@ export function PlanPicker({
 
   async function subscribe() {
     setLoading(true);
-
-    if (hasActiveSubscription) {
-      const result = await openChangePlanPortalAction();
-      if (result.error) {
-        toast.error(result.error);
-      } else if (result.url) {
-        window.location.href = result.url;
-      }
+    try {
+      await openCheckoutOrPortal();
+    } catch {
+      // A network or server failure shouldn't take the whole page down.
+      toast.error("Couldn't reach the billing service. Try again in a moment.");
+    } finally {
       setLoading(false);
-      return;
     }
+  }
 
-    const result = await startCheckoutAction("starter");
+  async function openCheckoutOrPortal() {
+    const result = hasActiveSubscription
+      ? await openChangePlanPortalAction()
+      : await startCheckoutAction("starter");
     if (result.error) {
       toast.error(result.error);
     } else if (result.url) {
       window.location.href = result.url;
     }
-    setLoading(false);
   }
 
   return (
