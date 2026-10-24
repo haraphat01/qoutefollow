@@ -1,7 +1,13 @@
-import { formatDate } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 import type { QuoteEmailAuditEntry } from "@/lib/queries/quote-email-audit";
 
-export function QuoteEmailAudit({ entries }: { entries: QuoteEmailAuditEntry[] }) {
+export function QuoteEmailAudit({
+  entries,
+  timeZone,
+}: {
+  entries: QuoteEmailAuditEntry[];
+  timeZone: string;
+}) {
   if (entries.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -28,7 +34,7 @@ export function QuoteEmailAudit({ entries }: { entries: QuoteEmailAuditEntry[] }
             className="text-xs text-muted-foreground"
             dateTime={entry.at.toISOString()}
           >
-            {formatDate(entry.at)}
+            {formatDateTime(entry.at, timeZone)}
           </time>
         </li>
       ))}

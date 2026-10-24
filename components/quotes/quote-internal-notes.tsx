@@ -7,7 +7,7 @@ import type { ActionState } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { formatDate } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 
 type NoteRow = {
   id: string;
@@ -22,10 +22,12 @@ export function QuoteInternalNotes({
   quoteId,
   notes,
   memberHint,
+  timeZone,
 }: {
   quoteId: string;
   notes: NoteRow[];
   memberHint: string;
+  timeZone: string;
 }) {
   const [state, action, pending] = useActionState(
     addQuoteInternalNoteAction,
@@ -67,7 +69,7 @@ export function QuoteInternalNotes({
               className="rounded-xl border border-dashed border-border/80 bg-muted/40 px-4 py-3 text-sm"
             >
               <p className="text-xs font-medium text-muted-foreground">
-                {note.authorName} · {formatDate(note.createdAt)}
+                {note.authorName} · {formatDateTime(note.createdAt, timeZone)}
               </p>
               <p className="mt-2 whitespace-pre-wrap">{note.body}</p>
             </li>

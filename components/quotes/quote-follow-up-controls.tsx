@@ -8,6 +8,7 @@ import {
   snoozeNextFollowUpAction,
 } from "@/lib/actions/quote-follow-ups";
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/format";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -20,10 +21,12 @@ export function QuoteFollowUpControls({
   quoteId,
   nextScheduledAt,
   nextScheduledId,
+  timeZone,
 }: {
   quoteId: string;
   nextScheduledAt: string | null;
   nextScheduledId: string | null;
+  timeZone: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [snoozeValue, setSnoozeValue] = useState("");
@@ -44,7 +47,7 @@ export function QuoteFollowUpControls({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Next email: {new Date(nextScheduledAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+        Next email: {formatDateTime(nextScheduledAt, timeZone)}
       </p>
       <Button
         type="button"

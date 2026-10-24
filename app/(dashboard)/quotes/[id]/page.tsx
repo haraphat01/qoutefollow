@@ -45,7 +45,7 @@ import { listOrganizationSequences } from "@/lib/queries/sequences";
 import { getSession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { followUpSequences, followUpSteps, scheduledFollowUps } from "@/lib/db/schema";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { isExpirationUrgent, daysUntilExpiration } from "@/lib/follow-ups/expiration";
 
 export default async function QuoteDetailPage({
@@ -69,6 +69,7 @@ export default async function QuoteDetailPage({
 
   const { quote, customer } = detail;
   const document = (await loadQuoteDocument({ organizationId: session.organization.id, quoteId: quote.id }))!;
+  const timeZone = document.organization.sendTimezone;
 
   const [
     conversationRows,
@@ -154,7 +155,7 @@ export default async function QuoteDetailPage({
       {quote.acceptedAt ? (
         <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
           <strong>Accepted online</strong> by {quote.acceptedName} on{" "}
-          {quote.acceptedAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: document.organization.sendTimezone })}
+          {quote.acceptedAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone })}
           {document.acceptedOptionIndex !== null && document.options.length > 1
             ? ` · chose ${document.options[document.acceptedOptionIndex].name}`
             : ""}
@@ -278,7 +279,7 @@ export default async function QuoteDetailPage({
                 <div className="rounded-lg bg-muted/60 p-3">
                   <dt className="text-xs text-muted-foreground">Viewed online</dt>
                   <dd className="mt-1 font-semibold" data-testid="view-count">{quote.viewCount} {quote.viewCount === 1 ? "time" : "times"}</dd>
-                  {quote.lastViewedAt ? <dd className="text-xs text-muted-foreground">Last {quote.lastViewedAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: document.organization.sendTimezone })}</dd> : null}
+                  {quote.lastViewedAt ? <dd className="text-xs text-muted-foreground">Last {quote.lastViewedAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone })}</dd> : null}
                 </div>
                 <div className="rounded-lg bg-muted/60 p-3">
                   <dt className="text-xs text-muted-foreground">Emails opened</dt>
@@ -298,6 +299,7 @@ export default async function QuoteDetailPage({
               </CardHeader>
               <CardContent className="pt-3">
                 <SendQuoteButton
+                  timeZone={timeZone}
                   quoteId={quote.id}
                   customerEmail={customer.email}
                   sentAt={quote.sentAt?.toISOString() ?? null}
@@ -314,6 +316,7 @@ export default async function QuoteDetailPage({
             </CardHeader>
             <CardContent className="pt-3">
               <QuoteFollowUpControls
+                timeZone={timeZone}
                 quoteId={quote.id}
                 nextScheduledId={nextFollowUp?.id ?? null}
                 nextScheduledAt={
@@ -363,6 +366,7 @@ export default async function QuoteDetailPage({
         </CardHeader>
         <CardContent className="pt-0">
           <QuoteInternalNotes
+            timeZone={timeZone}
             quoteId={quote.id}
             memberHint={memberHint}
             notes={internalNotes.map((row) => ({
@@ -383,7 +387,7 @@ export default async function QuoteDetailPage({
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0">
-          <QuoteEmailAudit entries={emailAudit} />
+          <QuoteEmailAudit entries={emailAudit} timeZone={timeZone} />
         </CardContent>
       </Card>
 
@@ -465,7 +469,7 @@ export default async function QuoteDetailPage({
                 {schedule.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell className="font-medium">Day {row.dayOffset}</TableCell>
-                    <TableCell>{formatDate(row.scheduledFor)}</TableCell>
+                    <TableCell>{formatDateTime(row.scheduledFor, timeZone)}</TableCell>
                     <TableCell>{row.subject}</TableCell>
                     <TableCell className="capitalize text-muted-foreground">{row.status}</TableCell>
                   </TableRow>

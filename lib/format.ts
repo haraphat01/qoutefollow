@@ -16,12 +16,28 @@ export function formatMoney(amount: string | number) {
   }).format(value);
 }
 
-export function formatDate(date: Date | string) {
+/**
+ * Pass the business's time zone for real moments in time (sends, notes,
+ * acceptances); the server runs in UTC, so evening events in US time zones
+ * would otherwise show the next day, and client components would disagree
+ * with the server render.
+ */
+export function formatDate(date: Date | string, timeZone?: string) {
   const value = typeof date === "string" ? new Date(date) : date;
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
+    timeZone,
+  }).format(value);
+}
+
+export function formatDateTime(date: Date | string, timeZone?: string) {
+  const value = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone,
   }).format(value);
 }
 

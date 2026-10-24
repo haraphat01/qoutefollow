@@ -6,15 +6,18 @@ import { toast } from "sonner";
 
 import { sendQuoteAction } from "@/lib/actions/quote-follow-ups";
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/format";
 
 export function SendQuoteButton({
   quoteId,
   customerEmail,
   sentAt,
+  timeZone,
 }: {
   quoteId: string;
   customerEmail: string;
   sentAt: string | null;
+  timeZone: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState(false);
@@ -35,7 +38,7 @@ export function SendQuoteButton({
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
         {sentAt
-          ? `Emailed to ${customerEmail} on ${new Date(sentAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}.`
+          ? `Emailed to ${customerEmail} on ${formatDateTime(sentAt, timeZone)}.`
           : `Not sent to ${customerEmail} yet.`}
       </p>
       {confirming ? (
