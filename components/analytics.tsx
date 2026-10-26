@@ -1,8 +1,8 @@
 "use client";
 
-import Script from "next/script";
+import { useEffect } from "react";
 
-const SITE_ID = process.env.NEXT_PUBLIC_TRAKS_SITE_ID ?? "pb_live_l8itoiz1p7ar6uazp63n2ron";
+import { TRAKS_SITE_ID, TRAKS_SRC } from "@/lib/analytics";
 
 /** The only pages analytics may report. */
 const PUBLIC_PATHS = new Set([
@@ -24,35 +24,44 @@ const PUBLIC_PATHS = new Set([
 function limitTrackingToPublicPages() {
   const tracked = window.history.pushState;
   const native = History.prototype.pushState;
-  if (tracked === native) {
-    return;
+  if (tracked === native || (tracked as { __publicOnly?: boolean }).__publicOnly) {
+    return tracked !== native;
   }
-  window.history.pushState = function (data, unused, url) {
+  const limited: History["pushState"] = function (this: History, data, unused, url) {
     const target = url ? new URL(url, window.location.href).pathname : window.location.pathname;
     return (PUBLIC_PATHS.has(target) ? tracked : native).call(this, data, unused, url);
   };
+  (limited as { __publicOnly?: boolean }).__publicOnly = true;
+  window.history.pushState = limited;
+  return true;
 }
 
 /**
- * Cookieless page analytics for public marketing pages only. Never used inside
- * the app or on customers' quote pages: it reports the page path, and /q/
- * paths contain the private quote link.
+ * Cookieless page analytics for public pages only. Never used inside the app
+ * or on customers' quote pages: it reports the page path, and /q/ paths
+ * contain the private quote link.
  */
 export function PublicAnalytics() {
-  if (!SITE_ID) {
+  // The tracker loads asynchronously; wrap its history hook once it appears.
+  useEffect(() => {
+    if (limitTrackingToPublicPages()) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      if (limitTrackingToPublicPages()) {
+        window.clearInterval(timer);
+      }
+    }, 100);
+    const stop = window.setTimeout(() => window.clearInterval(timer), 15_000);
+    return () => {
+      window.clearInterval(timer);
+      window.clearTimeout(stop);
+    };
+  }, []);
+
+  if (!TRAKS_SITE_ID) {
     return null;
   }
-  return (
-    <>
-      <Script id="traks-queue" strategy="afterInteractive">
-        {"window.traks=window.traks||function(){(window.traks.q=window.traks.q||[]).push(arguments)}"}
-      </Script>
-      <Script
-        src="https://traks-collect.apoaminat.workers.dev/t.js"
-        data-site={SITE_ID}
-        strategy="afterInteractive"
-        onLoad={limitTrackingToPublicPages}
-      />
-    </>
-  );
+  // React places async scripts in <head> (and loads each only once).
+  return <script async defer src={TRAKS_SRC} data-site={TRAKS_SITE_ID} />;
 }
