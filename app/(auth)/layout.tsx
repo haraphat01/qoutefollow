@@ -1,9 +1,12 @@
 import Link from "next/link";
+
+import { PublicAnalytics } from "@/components/analytics";
 import { ArrowLeft, Check, FileText, Mail, ShieldCheck } from "lucide-react";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f8f8f3] lg:grid lg:grid-cols-[minmax(350px,0.9fr)_1.1fr]">
+      <PublicAnalytics />
       <aside className="relative hidden min-h-screen overflow-hidden bg-[#234b3e] px-10 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-16">
         <div className="absolute -right-36 top-1/4 size-[30rem] rounded-full border border-white/[0.07]" />
         <div className="absolute -right-16 top-[30%] size-[22rem] rounded-full border border-white/[0.07]" />

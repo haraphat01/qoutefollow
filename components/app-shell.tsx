@@ -270,6 +270,15 @@ export function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const pageLabel = navItems.find((item) => isActiveNavItem(pathname, item.href))?.label ?? "Workspace";
 
+  // Public pages load cookieless analytics, which follows in-app navigation by
+  // wrapping history.pushState. Undo that when someone signs in, so app pages
+  // aren't reported (the wrapper is set on the instance; the prototype is untouched).
+  useEffect(() => {
+    if (Object.prototype.hasOwnProperty.call(window.history, "pushState")) {
+      delete (window.history as { pushState?: History["pushState"] }).pushState;
+    }
+  }, []);
+
   // Links close the menu themselves; Escape closes it too, and the page can't scroll behind it.
   useEffect(() => {
     if (!menuOpen) {

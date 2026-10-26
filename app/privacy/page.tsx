@@ -70,7 +70,9 @@ export default function PrivacyPage() {
       <h2>5. Cookies</h2>
       <p>
         We use one essential cookie to keep you signed in. We don&apos;t use advertising or third-party tracking
-        cookies.
+        cookies. On our public pages (the homepage, sign-in, sign-up and these policies) we use cookieless
+        analytics that records the page visited, the referring site and screen size, without identifying you.
+        It isn&apos;t used inside the app or on quote pages sent to customers.
       </p>
 
       <h2>6. How long we keep data</h2>
