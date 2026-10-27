@@ -12,7 +12,12 @@
     "db:push": "drizzle-kit push",
     "follow-ups:run": "node --env-file=.env.local -e \"fetch('http://localhost:3000/api/cron/follow-ups',{headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.text()).then(console.log)\"",
     "worker:follow-ups": "tsx scripts/follow-up-worker.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "demo:mock-email": "tsx scripts/demo/mock-resend.ts",
+    "demo:seed": "tsx scripts/demo/seed.ts",
+    "demo:record": "tsx scripts/demo/record.ts",
+    "demo:render": "tsx scripts/demo/render.ts",
+    "demo:video": "npm run demo:seed && npm run demo:record && npm run demo:render"
   },
   "dependencies": {
     "@radix-ui/react-dropdown-menu": "^2.2.1",
@@ -58,6 +63,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
+    "playwright": "^1.64.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^2.1.9"
