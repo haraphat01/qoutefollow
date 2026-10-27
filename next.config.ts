@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // The demo-video build (scripts/demo) uses its own folder so it can run
+  // next to `next dev`.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   serverExternalPackages: ["pdf-parse"],
   experimental: {
     agentFeedback: true,

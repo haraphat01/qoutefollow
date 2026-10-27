@@ -3,14 +3,13 @@ import Link from "next/link";
 import {
   ArrowRight,
   Check,
-  CircleCheck,
-  Clock3,
   FileText,
   Mail,
   ShieldCheck,
 } from "lucide-react";
 
 import { PublicAnalytics } from "@/components/analytics";
+import { HeroDemoVideo } from "@/components/hero-demo-video";
 import { Button } from "@/components/ui/button";
 import { PLAN_BENEFITS, PLAN_CATALOG, TRIAL_DAYS } from "@/lib/billing/plans";
 import { FAQ, SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site";
@@ -77,12 +76,6 @@ function structuredData() {
   };
 }
 
-const steps = [
-  { day: "02", title: "A friendly check-in", description: "Give customers a helpful nudge while the estimate is still fresh." },
-  { day: "05", title: "Answer the pause", description: "Stay easy to reach when they need a little more time." },
-  { day: "09", title: "Keep the door open", description: "Follow through once more, without adding another task to your day." },
-];
-
 export default function HomePage() {
   return (
     <div className="min-h-screen overflow-hidden bg-[#f8f8f3] text-[#1d3029]">
@@ -120,7 +113,7 @@ export default function HomePage() {
       </header>
 
       <main>
-        <section className="relative mx-auto grid max-w-[1240px] items-center gap-12 px-5 pb-20 pt-10 md:px-10 md:pb-28 md:pt-16 lg:grid-cols-[1fr_0.92fr] lg:gap-16">
+        <section className="relative mx-auto grid max-w-[1240px] items-center gap-12 px-5 pb-20 pt-10 md:px-10 md:pb-28 md:pt-16 lg:grid-cols-[0.95fr_1.05fr] lg:gap-14">
           <div className="absolute -left-44 top-8 size-[30rem] rounded-full bg-[#e9eee1] blur-3xl" />
           <div className="relative z-10">
             <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#dce5d9] bg-white/80 px-3.5 py-2 text-xs font-semibold tracking-wide text-[#456454] shadow-sm">
@@ -151,56 +144,9 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="relative z-10 mx-auto w-full max-w-[510px] lg:ml-auto">
+          <div className="relative z-10 mx-auto w-full max-w-[640px] lg:ml-auto">
             <div className="absolute -right-7 -top-8 size-36 rounded-full bg-[#e5eadb] blur-2xl" />
-            <div className="relative rounded-[1.75rem] border border-[#dce3d7] bg-white p-4 shadow-[0_32px_90px_-46px_rgba(33,69,52,0.32)] sm:p-6">
-              <div className="flex items-center justify-between border-b border-[#edf0e9] pb-4">
-                <div>
-                  <p className="text-sm font-semibold text-[#253c31]">Quote activity</p>
-                  <p className="mt-1 text-xs text-[#7b8a7f]">Your follow-up, at a glance</p>
-                </div>
-                <span className="rounded-full bg-[#edf5ed] px-2.5 py-1 text-[0.68rem] font-semibold text-[#527d5e]">On track</span>
-              </div>
-
-              <div className="mt-5 rounded-2xl bg-[#f6f8f3] p-4 sm:p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="grid size-10 place-items-center rounded-xl bg-white text-[#568064] shadow-sm"><FileText className="size-5" /></span>
-                    <div>
-                      <p className="text-sm font-semibold text-[#253c31]">Roof replacement</p>
-                      <p className="mt-1 text-xs text-[#7b8a7f]">Jordan Miller · Q-1048</p>
-                    </div>
-                  </div>
-                  <span className="whitespace-nowrap text-sm font-semibold text-[#253c31]">$8,450</span>
-                </div>
-                <div className="mt-5 flex items-center justify-between border-t border-[#e6ebe1] pt-4">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#687b6d]"><Clock3 className="size-3.5" /> Next touchpoint</span>
-                  <span className="text-xs font-semibold text-[#4d7959]">Day 2 · Tomorrow</span>
-                </div>
-              </div>
-
-              <div className="mt-6 px-1">
-                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.11em] text-[#718177]">A considerate cadence</p>
-                <div className="space-y-4">
-                  {steps.map((step, index) => (
-                    <div key={step.day} className="flex gap-3.5">
-                      <div className="flex flex-col items-center">
-                        <span className={`grid size-8 shrink-0 place-items-center rounded-full text-[0.65rem] font-bold ${index === 0 ? "bg-[#285742] text-white" : "bg-[#eef2e9] text-[#69806e]"}`}>{step.day}</span>
-                        {index < steps.length - 1 ? <span className="mt-1 h-5 w-px bg-[#dfe7dc]" /> : null}
-                      </div>
-                      <div className="pt-0.5">
-                        <p className="text-sm font-semibold text-[#334b3d]">{step.title}</p>
-                        <p className="mt-1 text-xs leading-relaxed text-[#7b8a7f]">{step.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="relative ml-auto mt-4 flex w-fit items-center gap-2.5 rounded-xl border border-[#dce5d9] bg-white px-4 py-3 shadow-lg shadow-[#304b39]/[0.06]">
-              <span className="grid size-8 place-items-center rounded-full bg-[#eaf3eb] text-[#518061]"><CircleCheck className="size-4" /></span>
-              <p className="text-xs font-semibold text-[#385347]">Reply received · Follow-ups paused</p>
-            </div>
+            <HeroDemoVideo />
           </div>
         </section>
 
