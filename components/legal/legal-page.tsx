@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { FileText } from "lucide-react";
 
-import { PublicAnalytics } from "@/components/analytics";
 import { LEGAL } from "@/lib/legal";
 
 export function LegalPage({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f8f8f3] text-[#1d3029]">
-      <PublicAnalytics />
       <header className="mx-auto flex max-w-3xl items-center justify-between px-5 py-6">
         <Link href="/" className="flex items-center gap-2.5" aria-label="QuoteFollow home">
           <span className="grid size-9 place-items-center rounded-xl bg-[#234b3e] text-white">

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { TRAKS_QUEUE_SNIPPET } from "@/lib/analytics";
+import Script from "next/script";
+import { TRAKS_QUEUE_SNIPPET, TRAKS_SITE_ID, TRAKS_SRC } from "@/lib/analytics";
 import { Toaster } from "@/components/ui/sonner";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, siteUrl } from "@/lib/site";
 
@@ -58,12 +59,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: TRAKS_QUEUE_SNIPPET }} />
-      </head>
       <body className="min-h-full flex flex-col">
         {children}
         <Toaster richColors closeButton />
+        <Script id="traks-stub" strategy="beforeInteractive">{TRAKS_QUEUE_SNIPPET}</Script>
+        <Script defer data-site={TRAKS_SITE_ID} src={TRAKS_SRC} strategy="afterInteractive" />
       </body>
     </html>
   );

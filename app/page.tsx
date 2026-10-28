@@ -8,7 +8,6 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-import { PublicAnalytics } from "@/components/analytics";
 import { HeroDemoVideo } from "@/components/hero-demo-video";
 import { Button } from "@/components/ui/button";
 import { PLAN_BENEFITS, PLAN_CATALOG, TRIAL_DAYS } from "@/lib/billing/plans";
@@ -79,7 +78,6 @@ function structuredData() {
 export default function HomePage() {
   return (
     <div className="min-h-screen overflow-hidden bg-[#f8f8f3] text-[#1d3029]">
-      <PublicAnalytics />
       <script
         type="application/ld+json"
         // Escape "<" so the JSON can't close the script tag.
